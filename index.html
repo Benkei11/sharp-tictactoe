@@ -70,7 +70,6 @@
         .cell:hover {
             background: #111;
         }
-        /* Winning cells highlighted in white */
         .cell.win {
             background: #fff !important;
             color: #000 !important;
@@ -101,13 +100,11 @@
 
     <h1>Sharp XO</h1>
 
-    <!-- Main menu -->
     <div id="mainMenu" class="menu">
         <button onclick="showOnlineMenu()">Online multiplayer</button>
         <button onclick="startLocalGame()">Offline multiplayer</button>
     </div>
 
-    <!-- Online submenu -->
     <div id="onlineMenu" class="online-menu hidden">
         <div style="display: flex; gap: 10px;">
             <input type="text" id="customRoomInput" placeholder="Enter custom room code">
@@ -120,7 +117,6 @@
         <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
 
-    <!-- Game interface -->
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
         <div id="status">Connecting...</div>
@@ -138,7 +134,6 @@
         
         <div id="roomInfo" style="margin-top: 10px; font-size: 14px; color: #888; text-align: center;"></div>
         
-        <!-- Action buttons -->
         <div class="action-btns">
             <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
             <button class="small-btn" onclick="undoMove()">Undo</button>
@@ -175,6 +170,7 @@
         }
 
         function backToMain() {
+            leaveRoomClean();
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('mainMenu').classList.remove('hidden');
         }
@@ -206,29 +202,17 @@
             }
 
             currentRoomId = customCode;
-            mySymbol = 'X';
             roomRef = db.ref('rooms/' + currentRoomId);
 
-            // الانتقال الفوري لشاشة اللعب
-            document.getElementById('onlineMenu').classList.add('hidden');
-            document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
-            document.getElementById('copyBtn').classList.remove('hidden');
-
             roomRef.once('value', (snapshot) => {
-                if (!snapshot.exists()) {
-                    roomRef.set({
-                        boardState: ["", "", "", "", "", "", "", "", ""],
-                        currentTurn: 'X',
-                        scores: { 'X': 0, 'O': 0 },
-                        playerMoves: { 'X': [], 'O': [] },
-                        moveHistory: [],
-                        gameOver: false,
-                        winningPattern: [],
-                        startingPlayer: 'X'
-                    });
+                const data = snapshot.val();
+                if (data && data.players && Object.keys(data.players).length > 0) {
+                    alert('هذا الكود مستخدم حالياً وفيه لاعبين! يرجى اختيار كود آخر.');
+                    return;
                 }
-                attachRoomListener();
+
+                mySymbol = 'X';
+                enterRoomAsPlayer();
             });
         }
 
@@ -240,7 +224,6 @@
             }
 
             currentRoomId = roomCode;
-            mySymbol = 'O';
             roomRef = db.ref('rooms/' + currentRoomId);
 
             roomRef.once('value', (snapshot) => {
@@ -249,20 +232,89 @@
                     return;
                 }
 
-                // الانتقال الفوري لشاشة اللعب
-                document.getElementById('onlineMenu').classList.add('hidden');
-                document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
-                document.getElementById('copyBtn').classList.remove('hidden');
+                const data = snapshot.val();
+                const activePlayersCount = data.players ? Object.keys(data.players).length : 0;
+
+                if (activePlayersCount >= 2) {
+                    alert('الغرفة ممتلئة بالكامل (لاعبين اثنين موجودين حالياً). لا يمكن الانضمام.');
+                    return;
+                }
+
+                if (data.players && data.players.playerX) {
+                    mySymbol = 'O';
+                } else {
+                    mySymbol = 'X';
+                }
+
+                enterRoomAsPlayer();
+            });
+        }
+
+        function enterRoomAsPlayer() {
+            document.getElementById('onlineMenu').classList.add('hidden');
+            document.getElementById('gameContainer').classList.remove('hidden');
+            document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
+            document.getElementById('copyBtn').classList.remove('hidden');
+
+            roomRef.once('value', (snapshot) => {
+                if (!snapshot.exists() || !snapshot.val().boardState) {
+                    roomRef.set({
+                        boardState: ["", "", "", "", "", "", "", "", ""],
+                        currentTurn: 'X',
+                        scores: { 'X': 0, 'O': 0 },
+                        playerMoves: { 'X': [], 'O': [] },
+                        moveHistory: [],
+                        gameOver: false,
+                        winningPattern: [],
+                        startingPlayer: 'X',
+                        emptySince: null
+                    });
+                }
+                
+                if (mySymbol === 'X') {
+                    roomRef.child('players/playerX').set(true);
+                    roomRef.child('players/playerX').onDisconnect().remove();
+                } else {
+                    roomRef.child('players/playerO').set(true);
+                    roomRef.child('players/playerO').onDisconnect().remove();
+                }
 
                 attachRoomListener();
             });
+        }
+
+        function leaveRoomClean() {
+            if (roomRef && mySymbol) {
+                if (mySymbol === 'X') {
+                    roomRef.child('players/playerX').remove();
+                } else {
+                    roomRef.child('players/playerO').remove();
+                }
+                roomRef.off();
+            }
         }
 
         function attachRoomListener() {
             roomRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
+
+                const players = data.players ? Object.keys(data.players).length : 0;
+                if (players === 0) {
+                    if (!data.emptySince) {
+                        roomRef.update({ emptySince: Date.now() });
+                    } else if (Date.now() - data.emptySince > 180000) {
+                        // عند انقضاء 3 دقائق: يتم مسح الغرفة تماماً وحل الكود
+                        roomRef.remove();
+                        alert('انتهت صلاحية الغرفة وتم تفكيك الكود لخلوها لمدة 3 دقائق.');
+                        window.location.reload();
+                        return;
+                    }
+                } else {
+                    if (data.emptySince) {
+                        roomRef.update({ emptySince: null });
+                    }
+                }
 
                 boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
                 currentTurn = data.currentTurn || 'X';
@@ -301,7 +353,6 @@
             let symbol = currentTurn;
             let removedIndex = null;
             
-            // FIFO rule: max 4 markers per player now
             if (playerMoves[symbol].length >= 4) {
                 removedIndex = playerMoves[symbol].shift();
                 boardState[removedIndex] = "";
@@ -428,9 +479,7 @@
         }
 
         function backToMenu() {
-            if (roomRef) {
-                roomRef.off();
-            }
+            leaveRoomClean();
             window.location.reload();
         }
     </script>
