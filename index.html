@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sharp Tic-Tac-Toe Online</title>
+    <title>Sharp Tic-Tac-Toe</title>
     <!-- PeerJS library for direct peer-to-peer connection -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
@@ -22,7 +22,7 @@
             letter-spacing: 2px;
             margin-bottom: 10px;
         }
-        .menu, .game-container {
+        .menu, .game-container, .online-menu {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -73,8 +73,12 @@
             margin-top: 15px;
             font-size: 18px;
         }
-        .back-btn {
+        .action-btns {
+            display: flex;
+            gap: 10px;
             margin-top: 10px;
+        }
+        .small-btn {
             font-size: 14px;
             padding: 8px 15px;
         }
@@ -84,13 +88,23 @@
 
     <h1>Sharp XO</h1>
 
-    <!-- Main menu for creating or joining a room -->
-    <div id="menu" class="menu">
-        <button onclick="createGame()">Create new room</button>
-        <div style="margin-top: 10px;">
-            <input type="text" id="roomCodeInput" placeholder="Enter room code">
+    <!-- Main menu -->
+    <div id="mainMenu" class="menu">
+        <button onclick="showOnlineMenu()">Online multiplayer</button>
+        <button onclick="startLocalGame()">Local play (pass & play)</button>
+    </div>
+
+    <!-- Online submenu -->
+    <div id="onlineMenu" class="online-menu hidden">
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="customRoomInput" placeholder="Enter custom room code">
+            <button onclick="createCustomGame()">Create room</button>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 10px;">
+            <input type="text" id="roomCodeInput" placeholder="Enter room code to join">
             <button onclick="joinGame()">Join room</button>
         </div>
+        <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
 
     <!-- Game interface -->
@@ -107,29 +121,79 @@
             <div class="cell" onclick="makeMove(7)"></div>
             <div class="cell" onclick="makeMove(8)"></div>
         </div>
+        
         <div id="roomInfo" style="margin-top: 15px; font-size: 14px; color: #888;"></div>
-        <button class="back-btn" onclick="backToMenu()">Back to menu</button>
+        
+        <!-- Action buttons -->
+        <div class="action-btns">
+            <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
+            <button class="small-btn" onclick="resetGame()">Reset game</button>
+            <button class="small-btn" onclick="backToMenu()">Back to menu</button>
+        </div>
     </div>
 
     <script>
         let peer, conn;
         let isHost = false;
-        let mySymbol = '';
+        let isOnlineMode = false;
+        let mySymbol = 'X';
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
         let playerMoves = { 'X': [], 'O': [] };
         let gameOver = false;
+        let roomCodeText = '';
 
-        function createGame() {
-            peer = new Peer();
+        function showOnlineMenu() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('onlineMenu').classList.remove('hidden');
+            isOnlineMode = true;
+        }
+
+        function backToMain() {
+            document.getElementById('onlineMenu').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+        }
+
+        function startLocalGame() {
+            isOnlineMode = false;
+            isHost = true;
+            mySymbol = 'X';
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameContainer').classList.remove('hidden');
+            document.getElementById('status').innerText = 'Turn: player X';
+            document.getElementById('roomInfo').innerText = 'Local pass & play mode';
+        }
+
+        function createCustomGame() {
+            const customCode = document.getElementById('customRoomInput').value.trim();
+            if (!customCode) {
+                alert('Please enter a custom room code');
+                return;
+            }
+
+            if (peer) {
+                peer.destroy();
+            }
+
+            roomCodeText = customCode;
+            peer = new Peer(roomCodeText);
             isHost = true;
             mySymbol = 'X';
 
             peer.on('open', (id) => {
-                document.getElementById('menu').classList.add('hidden');
+                document.getElementById('onlineMenu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
                 document.getElementById('status').innerText = 'Room created, waiting for player 2...';
                 document.getElementById('roomInfo').innerText = 'Room code: ' + id;
+                document.getElementById('copyBtn').classList.remove('hidden');
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    alert('This room code is already taken or active. Try another one.');
+                } else {
+                    alert('Connection error: ' + err.type);
+                }
             });
 
             peer.on('connection', (connection) => {
@@ -142,8 +206,12 @@
         function joinGame() {
             const roomCode = document.getElementById('roomCodeInput').value.trim();
             if (!roomCode) {
-                alert('Please enter a room code');
+                alert('Please enter a room code to join');
                 return;
+            }
+
+            if (peer) {
+                peer.destroy();
             }
 
             peer = new Peer();
@@ -155,12 +223,16 @@
                 setupConnection();
                 document.getElementById('status').innerText = 'Connected, player (X) goes first.';
             });
+
+            peer.on('error', (err) => {
+                alert('Could not connect to room. Check the code.');
+            });
         }
 
         function setupConnection() {
             conn.on('open', () => {
                 if (!isHost) {
-                    document.getElementById('menu').classList.add('hidden');
+                    document.getElementById('onlineMenu').classList.add('hidden');
                     document.getElementById('gameContainer').classList.remove('hidden');
                     document.getElementById('roomInfo').innerText = 'Connected to room successfully';
                 }
@@ -169,24 +241,33 @@
             conn.on('data', (data) => {
                 if (data.type === 'move') {
                     applyMove(data.index, data.symbol, false);
+                } else if (data.type === 'reset') {
+                    resetGameLocally();
                 }
+            });
+
+            conn.on('close', () => {
+                document.getElementById('status').innerText = 'Opponent left the room';
             });
         }
 
         function makeMove(index) {
-            if (gameOver || boardState[index] !== "" || currentTurn !== mySymbol) return;
+            if (gameOver || boardState[index] !== "") return;
 
-            applyMove(index, mySymbol, true);
-
-            if (conn && conn.open) {
-                conn.send({ type: 'move', index: index, symbol: mySymbol });
+            if (isOnlineMode) {
+                if (currentTurn !== mySymbol) return;
+                applyMove(index, mySymbol, true);
+                if (conn && conn.open) {
+                    conn.send({ type: 'move', index: index, symbol: mySymbol });
+                }
+            } else {
+                applyMove(index, currentTurn, true);
             }
         }
 
         function applyMove(index, symbol, isLocal) {
             if (boardState[index] !== "") return;
 
-            // FIFO rule: max 3 markers per player
             if (playerMoves[symbol].length >= 3) {
                 let oldestIndex = playerMoves[symbol].shift();
                 boardState[oldestIndex] = "";
@@ -209,10 +290,14 @@
 
             if (gameOver) return;
 
-            if (currentTurn === mySymbol) {
-                document.getElementById('status').innerText = 'Your turn (' + mySymbol + ')';
+            if (isOnlineMode) {
+                if (currentTurn === mySymbol) {
+                    document.getElementById('status').innerText = 'Your turn (' + mySymbol + ')';
+                } else {
+                    document.getElementById('status').innerText = "Opponent's turn...";
+                }
             } else {
-                document.getElementById('status').innerText = "Opponent's turn...";
+                document.getElementById('status').innerText = 'Turn: player ' + currentTurn;
             }
         }
 
@@ -230,6 +315,38 @@
                     gameOver = true;
                     return;
                 }
+            }
+        }
+
+        function copyRoomCode() {
+            if (roomCodeText) {
+                navigator.clipboard.writeText(roomCodeText).then(() => {
+                    const copyBtn = document.getElementById('copyBtn');
+                    copyBtn.innerText = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerText = 'Copy code';
+                    }, 2000);
+                });
+            }
+        }
+
+        function resetGame() {
+            resetGameLocally();
+            if (isOnlineMode && conn && conn.open) {
+                conn.send({ type: 'reset' });
+            }
+        }
+
+        function resetGameLocally() {
+            boardState = ["", "", "", "", "", "", "", "", ""];
+            playerMoves = { 'X': [], 'O': [] };
+            currentTurn = 'X';
+            gameOver = false;
+            updateUI();
+            if (isOnlineMode) {
+                document.getElementById('status').innerText = 'Game reset, your turn (' + mySymbol + ')';
+            } else {
+                document.getElementById('status').innerText = 'Turn: player X';
             }
         }
 
