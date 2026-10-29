@@ -27,7 +27,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
         .hidden {
             display: none !important;
@@ -36,8 +36,8 @@
             background: #000;
             color: #fff;
             border: 2px solid #fff;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 8px 16px;
+            font-size: 15px;
             cursor: pointer;
             border-radius: 4px;
         }
@@ -50,19 +50,19 @@
         }
         .board {
             display: grid;
-            grid-template-columns: repeat(3, 90px);
-            grid-template-rows: repeat(3, 90px);
-            gap: 5px;
+            grid-template-columns: repeat(3, 85px);
+            grid-template-rows: repeat(3, 85px);
+            gap: 4px;
             background: #fff;
-            padding: 5px;
-            margin-top: 10px;
+            padding: 4px;
+            margin-top: 8px;
         }
         .cell {
             background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 35px;
+            font-size: 32px;
             font-weight: bold;
             cursor: pointer;
             user-select: none;
@@ -75,12 +75,12 @@
             color: #000 !important;
         }
         #status, #spectatorInfo, #viewerCount {
-            margin-top: 5px;
-            font-size: 16px;
+            margin-top: 4px;
+            font-size: 15px;
             text-align: center;
         }
         #scoreboard {
-            font-size: 15px;
+            font-size: 14px;
             margin-bottom: 2px;
             letter-spacing: 1px;
         }
@@ -88,48 +88,59 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 8px;
-            margin-top: 10px;
+            gap: 6px;
+            margin-top: 8px;
         }
         .small-btn {
-            font-size: 13px;
-            padding: 6px 12px;
+            font-size: 12px;
+            padding: 5px 10px;
         }
-        /* Chat box styling */
-        .chat-container {
-            width: 290px;
-            border: 2px solid #fff;
-            margin-top: 10px;
-            padding: 8px;
+        /* Dual Chat Containers */
+        .chats-wrapper {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .chat-box {
+            width: 175px;
+            border: 1px solid #fff;
+            padding: 6px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
             background: #111;
             border-radius: 4px;
         }
+        .chat-title {
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            padding-bottom: 3px;
+        }
         .chat-messages {
-            height: 90px;
+            height: 75px;
             overflow-y: auto;
-            border: 1px solid #444;
-            padding: 5px;
-            font-size: 13px;
+            border: 1px solid #333;
+            padding: 4px;
+            font-size: 11px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
             text-align: left;
         }
         .chat-input-area {
             display: flex;
-            gap: 5px;
+            gap: 3px;
         }
         .chat-input-area input {
             flex: 1;
-            padding: 5px;
-            font-size: 13px;
+            padding: 4px;
+            font-size: 11px;
         }
         .chat-input-area button {
-            padding: 5px 10px;
-            font-size: 13px;
+            padding: 4px 6px;
+            font-size: 11px;
         }
     </style>
 </head>
@@ -159,7 +170,7 @@
     <!-- Game Container -->
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
-        <div id="viewerCount">👁️ Viewers (0)</div>
+        <div id="viewerCount">Viewers: 0</div>
         <div id="spectatorInfo" class="hidden" style="color: #0ff; font-weight: bold;"></div>
         <div id="status">Connecting...</div>
         
@@ -175,14 +186,27 @@
             <div class="cell" onclick="makeMove(8)"></div>
         </div>
         
-        <div id="roomInfo" style="margin-top: 5px; font-size: 13px; color: #888; text-align: center;"></div>
+        <div id="roomInfo" style="margin-top: 4px; font-size: 12px; color: #888; text-align: center;"></div>
         
-        <!-- Chat System -->
-        <div class="chat-container">
-            <div id="chatMessages" class="chat-messages"></div>
-            <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="⌨️ Type message (AR/EN)...">
-                <button onclick="sendChatMessage()">Send</button>
+        <!-- Dual Chat System -->
+        <div class="chats-wrapper">
+            <!-- Player Chat -->
+            <div class="chat-box">
+                <div class="chat-title">Players Chat</div>
+                <div id="playerChatMessages" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="playerChatInput" placeholder="Type...">
+                    <button onclick="sendPlayerChat()">Send</button>
+                </div>
+            </div>
+            <!-- Spectator Chat -->
+            <div class="chat-box">
+                <div class="chat-title">Spectators Chat</div>
+                <div id="specChatMessages" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="specChatInput" placeholder="Type...">
+                    <button onclick="sendSpecChat()">Send</button>
+                </div>
             </div>
         </div>
 
@@ -206,6 +230,7 @@
 
         let currentRoomId = '';
         let myRole = 'X'; 
+        let mySessionId = 'user_' + Math.random().toString(36).substring(2, 8);
         let isOnlineMode = false;
         let roomRef = null;
         let userPresenceRef = null;
@@ -252,7 +277,6 @@
             updateUI();
         }
 
-        // زر الإنشاء: فحص صارم يمنع الكتابة فوق أي غرفة نشطة تحتوي على بيانات أو لعبة غير منتهية
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -269,7 +293,6 @@
             roomRef.once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    // إذا وُجدت أي بيانات في الغرفة أو لم تنتهِ اللعبة، نرفض الإنشاء تماماً
                     if (data && (data.players || (data.boardState && data.boardState.some(cell => cell !== "")) || data.scores)) {
                         alert('This room code is already in use or contains active game data. You cannot overwrite it.');
                         return;
@@ -316,16 +339,15 @@
         }
 
         function setupRoomAndJoin(assignedRole) {
-            myRole = assignedRole;
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerHTML = 'Room Code: ' + currentRoomId;
             document.getElementById('copyBtn').classList.remove('hidden');
             document.getElementById('viewerCount').classList.remove('hidden');
 
-            roomRef.once('value').then((snapshot) => {
-                if (!snapshot.exists() || !snapshot.val().boardState) {
-                    roomRef.set({
+            roomRef.transaction((roomData) => {
+                if (!roomData) {
+                    roomData = {
                         boardState: ["", "", "", "", "", "", "", "", ""],
                         currentTurn: 'X',
                         scores: { 'X': 0, 'O': 0 },
@@ -333,26 +355,45 @@
                         moveHistory: [],
                         gameOver: false,
                         winningPattern: [],
-                        startingPlayer: 'X'
-                    });
-                }
-                
-                if (myRole !== 'Spectator') {
-                    userPresenceRef = roomRef.child('players/player' + myRole);
-                    userPresenceRef.set(true);
-                    userPresenceRef.onDisconnect().remove();
-                    document.getElementById('spectatorInfo').classList.add('hidden');
-                } else {
-                    userPresenceRef = roomRef.child('spectators/' + Math.random().toString(36).substring(2, 8));
-                    userPresenceRef.set(true);
-                    userPresenceRef.onDisconnect().remove();
-                    
-                    const specInfo = document.getElementById('spectatorInfo');
-                    specInfo.classList.remove('hidden');
-                    specInfo.innerText = "👁️ Spectator Mode (Watching Player Turn)";
+                        startingPlayer: 'X',
+                        players: {},
+                        spectators: {}
+                    };
                 }
 
-                attachRoomListener();
+                if (!roomData.players) roomData.players = {};
+                if (!roomData.spectators) roomData.spectators = {};
+
+                if (assignedRole === 'X' && !roomData.players.playerX) {
+                    roomData.players.playerX = mySessionId;
+                    myRole = 'X';
+                } else if (assignedRole === 'O' && !roomData.players.playerO) {
+                    roomData.players.playerO = mySessionId;
+                    myRole = 'O';
+                } else {
+                    roomData.spectators[mySessionId] = true;
+                    myRole = 'Spectator';
+                }
+                return roomData;
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    alert('Error joining room.');
+                } else {
+                    const data = snapshot.val();
+                    if (data.players && data.players.playerX === mySessionId) {
+                        myRole = 'X';
+                        userPresenceRef = roomRef.child('players/playerX');
+                    } else if (data.players && data.players.playerO === mySessionId) {
+                        myRole = 'O';
+                        userPresenceRef = roomRef.child('players/playerO');
+                    } else {
+                        myRole = 'Spectator';
+                        userPresenceRef = roomRef.child('spectators/' + mySessionId);
+                    }
+
+                    userPresenceRef.onDisconnect().remove();
+                    attachRoomListener();
+                }
             });
         }
 
@@ -371,9 +412,60 @@
                 const data = snapshot.val();
                 if (!data) return;
 
-                const spectatorsObj = data.spectators || {};
-                const viewersCount = Object.keys(spectatorsObj).length;
-                document.getElementById('viewerCount').innerText = `👁️ Viewers (${viewersCount})`;
+                const players = data.players || {};
+                const specs = data.spectators || {};
+                const specKeys = Object.keys(specs);
+
+                if (myRole === 'Spectator') {
+                    if (!players.playerX && specKeys.length > 0 && specKeys[0] === mySessionId) {
+                        roomRef.transaction((currentData) => {
+                            if (currentData && currentData.spectators && currentData.spectators[mySessionId]) {
+                                delete currentData.spectators[mySessionId];
+                                if (!currentData.players) currentData.players = {};
+                                currentData.players.playerX = mySessionId;
+                            }
+                            return currentData;
+                        }, () => {
+                            myRole = 'X';
+                            userPresenceRef.remove();
+                            userPresenceRef = roomRef.child('players/playerX');
+                            userPresenceRef.onDisconnect().remove();
+                        });
+                        return;
+                    } else if (!players.playerO && specKeys.length > 0 && specKeys[0] === mySessionId) {
+                        roomRef.transaction((currentData) => {
+                            if (currentData && currentData.spectators && currentData.spectators[mySessionId]) {
+                                delete currentData.spectators[mySessionId];
+                                if (!currentData.players) currentData.players = {};
+                                currentData.players.playerO = mySessionId;
+                            }
+                            return currentData;
+                        }, () => {
+                            myRole = 'O';
+                            userPresenceRef.remove();
+                            userPresenceRef = roomRef.child('players/playerO');
+                            userPresenceRef.onDisconnect().remove();
+                        });
+                        return;
+                    }
+                }
+
+                let mySpecLabel = '';
+                if (myRole === 'Spectator') {
+                    const index = specKeys.indexOf(mySessionId);
+                    if (index !== -1) {
+                        mySpecLabel = 'V' + (index + 1);
+                    }
+                }
+
+                document.getElementById('viewerCount').innerText = `Viewers: ${specKeys.length}`;
+                const specInfo = document.getElementById('spectatorInfo');
+                if (myRole === 'Spectator') {
+                    specInfo.classList.remove('hidden');
+                    specInfo.innerText = `You are spectator ${mySpecLabel}`;
+                } else {
+                    specInfo.classList.add('hidden');
+                }
 
                 boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
                 currentTurn = data.currentTurn || 'X';
@@ -387,18 +479,16 @@
                 winningPattern = data.winningPattern || [];
                 startingPlayer = data.startingPlayer || 'X';
 
-                renderChatMessages(data.messages || {});
+                renderChats(data.messages || {}, specKeys);
                 updateUI();
             });
         }
 
         function makeMove(index) {
             if (gameOver || boardState[index] !== "") return;
-            if (isOnlineMode && myRole === 'Spectator') return;
+            if (myRole === 'Spectator') return;
 
-            if (isOnlineMode) {
-                if (currentTurn !== myRole) return;
-            }
+            if (currentTurn !== myRole) return;
 
             let symbol = currentTurn;
             let removedIndex = null;
@@ -422,27 +512,23 @@
             checkWin();
             updateUI();
 
-            if (isOnlineMode) {
-                roomRef.update({
-                    boardState: boardState,
-                    currentTurn: currentTurn,
-                    scores: scores,
-                    playerMoves: playerMoves,
-                    moveHistory: moveHistory,
-                    gameOver: gameOver,
-                    winningPattern: winningPattern,
-                    startingPlayer: startingPlayer
-                });
-            }
+            roomRef.update({
+                boardState: boardState,
+                currentTurn: currentTurn,
+                scores: scores,
+                playerMoves: playerMoves,
+                moveHistory: moveHistory,
+                gameOver: gameOver,
+                winningPattern: winningPattern,
+                startingPlayer: startingPlayer
+            });
         }
 
         function undoMove() {
-            if (moveHistory.length === 0 || (isOnlineMode && myRole === 'Spectator')) return;
+            if (moveHistory.length === 0 || myRole === 'Spectator') return;
 
-            if (isOnlineMode) {
-                let lastMove = moveHistory[moveHistory.length - 1];
-                if (lastMove.symbol !== myRole) return;
-            }
+            let lastMove = moveHistory[moveHistory.length - 1];
+            if (lastMove.symbol !== myRole) return;
 
             if (gameOver) {
                 let lastWinner = boardState[winningPattern[0]];
@@ -451,33 +537,31 @@
                 winningPattern = [];
             }
 
-            let lastMove = moveHistory.pop();
-            boardState[lastMove.index] = "";
-            if (playerMoves[lastMove.symbol]) {
-                playerMoves[lastMove.symbol].pop();
+            let lastMovePopped = moveHistory.pop();
+            boardState[lastMovePopped.index] = "";
+            if (playerMoves[lastMovePopped.symbol]) {
+                playerMoves[lastMovePopped.symbol].pop();
             }
 
-            if (lastMove.removedIndex !== null) {
-                boardState[lastMove.removedIndex] = lastMove.symbol;
-                if (!playerMoves[lastMove.symbol]) playerMoves[lastMove.symbol] = [];
-                playerMoves[lastMove.symbol].unshift(lastMove.removedIndex);
+            if (lastMovePopped.removedIndex !== null) {
+                boardState[lastMovePopped.removedIndex] = lastMovePopped.symbol;
+                if (!playerMoves[lastMovePopped.symbol]) playerMoves[lastMovePopped.symbol] = [];
+                playerMoves[lastMovePopped.symbol].unshift(lastMovePopped.removedIndex);
             }
 
-            currentTurn = lastMove.symbol;
+            currentTurn = lastMovePopped.symbol;
             updateUI();
 
-            if (isOnlineMode) {
-                roomRef.update({
-                    boardState: boardState,
-                    currentTurn: currentTurn,
-                    scores: scores,
-                    playerMoves: playerMoves,
-                    moveHistory: moveHistory,
-                    gameOver: gameOver,
-                    winningPattern: winningPattern,
-                    startingPlayer: startingPlayer
-                });
-            }
+            roomRef.update({
+                boardState: boardState,
+                currentTurn: currentTurn,
+                scores: scores,
+                playerMoves: playerMoves,
+                moveHistory: moveHistory,
+                gameOver: gameOver,
+                winningPattern: winningPattern,
+                startingPlayer: startingPlayer
+            });
         }
 
         function updateUI() {
@@ -494,18 +578,14 @@
 
             if (gameOver) return;
 
-            if (isOnlineMode) {
-                if (myRole === 'Spectator') {
-                    document.getElementById('status').innerText = `👁️ Spectating: Player ${currentTurn}'s Turn`;
-                } else {
-                    if (currentTurn === myRole) {
-                        document.getElementById('status').innerText = `Your turn (${myRole})`;
-                    } else {
-                        document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
-                    }
-                }
+            if (myRole === 'Spectator') {
+                document.getElementById('status').innerText = `Turn: Player ${currentTurn}'s turn`;
             } else {
-                document.getElementById('status').innerText = `Turn: Player ${currentTurn}`;
+                if (currentTurn === myRole) {
+                    document.getElementById('status').innerText = `Your turn (${myRole})`;
+                } else {
+                    document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
+                }
             }
         }
 
@@ -530,35 +610,66 @@
             }
         }
 
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
+        function sendPlayerChat() {
+            const input = document.getElementById('playerChatInput');
             const text = input.value.trim();
-            if (!text || !isOnlineMode) return;
+            if (!text || myRole === 'Spectator') return;
 
-            const senderLabel = (myRole === 'Spectator') ? 'Viewer' : `Player ${myRole}`;
-            const msgRef = roomRef.child('messages').push();
+            const msgRef = roomRef.child('messages/playerChat').push();
             msgRef.set({
-                sender: senderLabel,
+                sender: `Player ${myRole}`,
                 text: text,
                 timestamp: Date.now()
             });
             input.value = '';
         }
 
-        function renderChatMessages(messagesObj) {
-            const chatContainer = document.getElementById('chatMessages');
-            chatContainer.innerHTML = '';
-            
-            const keys = Object.keys(messagesObj);
-            keys.sort((a, b) => messagesObj[a].timestamp - messagesObj[b].timestamp);
+        function sendSpecChat() {
+            const input = document.getElementById('specChatInput');
+            const text = input.value.trim();
+            if (!text) return;
 
-            keys.forEach(key => {
-                const msg = messagesObj[key];
+            roomRef.child('spectators').once('value').then((snapshot) => {
+                const specKeys = Object.keys(snapshot.val() || {});
+                const index = specKeys.indexOf(mySessionId);
+                const senderLabel = index !== -1 ? `V${index + 1}` : 'Viewer';
+
+                const msgRef = roomRef.child('messages/specChat').push();
+                msgRef.set({
+                    sender: senderLabel,
+                    text: text,
+                    timestamp: Date.now()
+                });
+                input.value = '';
+            });
+        }
+
+        function renderChats(messagesObj, specKeys) {
+            const pChatContainer = document.getElementById('playerChatMessages');
+            pChatContainer.innerHTML = '';
+            const pMsgs = messagesObj.playerChat || {};
+            const pKeys = Object.keys(pMsgs);
+            pKeys.sort((a, b) => pMsgs[a].timestamp - pMsgs[b].timestamp);
+            pKeys.forEach(key => {
+                const msg = pMsgs[key];
                 const div = document.createElement('div');
                 div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
-                chatContainer.appendChild(div);
+                pChatContainer.appendChild(div);
             });
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            pChatContainer.scrollTop = pChatContainer.scrollHeight;
+
+            const sChatContainer = document.getElementById('specChatMessages');
+            sChatContainer.innerHTML = '';
+            const sMsgs = messagesObj.specChat || {};
+            const sKeys = Object.keys(sMsgs);
+            sKeys.sort((a, b) => sMsgs[a].timestamp - sMsgs[b].timestamp);
+            sKeys.forEach(key => {
+                const msg = sMsgs[key];
+                const div = document.createElement('div');
+                div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+                sChatContainer.appendChild(div);
+            });
+            sChatContainer.scrollTop = sChatContainer.scrollHeight;
         }
 
         function copyRoomCode() {
@@ -574,7 +685,7 @@
         }
 
         function resetGame() {
-            if (isOnlineMode && myRole === 'Spectator') return;
+            if (myRole === 'Spectator') return;
             
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
@@ -585,18 +696,16 @@
             winningPattern = [];
             
             updateUI();
-            if (isOnlineMode) {
-                roomRef.update({
-                    boardState: boardState,
-                    currentTurn: currentTurn,
-                    scores: scores,
-                    playerMoves: playerMoves,
-                    moveHistory: moveHistory,
-                    gameOver: gameOver,
-                    winningPattern: winningPattern,
-                    startingPlayer: startingPlayer
-                });
-            }
+            roomRef.update({
+                boardState: boardState,
+                currentTurn: currentTurn,
+                scores: scores,
+                playerMoves: playerMoves,
+                moveHistory: moveHistory,
+                gameOver: gameOver,
+                winningPattern: winningPattern,
+                startingPlayer: startingPlayer
+            });
         }
 
         function backToMenu() {
