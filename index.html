@@ -74,7 +74,7 @@
             background: #fff !important;
             color: #000 !important;
         }
-        #status, #spectatorInfo, #viewerCount {
+        #status, #spectatorInfo, #roomCounts {
             margin-top: 4px;
             font-size: 15px;
             text-align: center;
@@ -166,7 +166,7 @@
     <!-- Game Container -->
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
-        <div id="viewerCount">Viewers: 0</div>
+        <div id="roomCounts">Players: 0/2 | Viewers: 0</div>
         <div id="spectatorInfo" class="hidden" style="color: #0ff; font-weight: bold;"></div>
         <div id="status">Connecting...</div>
         
@@ -185,7 +185,7 @@
         <div id="roomInfo" style="margin-top: 4px; font-size: 12px; color: #888; text-align: center;"></div>
         
         <!-- Unified Chat System -->
-        <div class="chat-box">
+        <div id="chatBoxContainer" class="chat-box">
             <div class="chat-title">Game Chat</div>
             <div id="chatMessages" class="chat-messages"></div>
             <div class="chat-input-area">
@@ -254,10 +254,11 @@
 
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerText = 'Offline Local Mode';
+            document.getElementById('roomInfo').innerText = ''; // إزالة أي نص داخلي
             document.getElementById('copyBtn').classList.add('hidden');
-            document.getElementById('viewerCount').classList.add('hidden');
+            document.getElementById('roomCounts').classList.add('hidden');
             document.getElementById('spectatorInfo').classList.add('hidden');
+            document.getElementById('chatBoxContainer').classList.add('hidden'); // إزالة شات الـ offline لعدم حاجته
             updateUI();
         }
 
@@ -327,7 +328,8 @@
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerHTML = 'Room Code: ' + currentRoomId;
             document.getElementById('copyBtn').classList.remove('hidden');
-            document.getElementById('viewerCount').classList.remove('hidden');
+            document.getElementById('roomCounts').classList.remove('hidden');
+            document.getElementById('chatBoxContainer').classList.remove('hidden');
 
             roomRef.transaction((roomData) => {
                 if (!roomData) {
@@ -398,47 +400,9 @@
 
                 const players = data.players || {};
                 const specs = data.spectators || {};
+                
+                const activePlayersCount = Object.keys(players).length;
                 const specKeys = Object.keys(specs);
-
-                if (myRole === 'Spectator') {
-                    if (!players.playerX && specKeys.length > 0 && specKeys[0] === mySessionId) {
-                        roomRef.transaction((currentData) => {
-                            if (currentData && currentData.spectators && currentData.spectators[mySessionId] && (!currentData.players || !currentData.players.playerX)) {
-                                delete currentData.spectators[mySessionId];
-                                if (!currentData.players) currentData.players = {};
-                                currentData.players.playerX = mySessionId;
-                                return currentData;
-                            }
-                            return;
-                        }, (err, committed, snap) => {
-                            if (committed && snap.val() && snap.val().players.playerX === mySessionId) {
-                                myRole = 'X';
-                                if (userPresenceRef) userPresenceRef.remove();
-                                userPresenceRef = roomRef.child('players/playerX');
-                                userPresenceRef.onDisconnect().remove();
-                            }
-                        });
-                        return;
-                    } else if (!players.playerO && specKeys.length > 0 && specKeys[0] === mySessionId) {
-                        roomRef.transaction((currentData) => {
-                            if (currentData && currentData.spectators && currentData.spectators[mySessionId] && (!currentData.players || !currentData.players.playerO)) {
-                                delete currentData.spectators[mySessionId];
-                                if (!currentData.players) currentData.players = {};
-                                currentData.players.playerO = mySessionId;
-                                return currentData;
-                            }
-                            return;
-                        }, (err, committed, snap) => {
-                            if (committed && snap.val() && snap.val().players.playerO === mySessionId) {
-                                myRole = 'O';
-                                if (userPresenceRef) userPresenceRef.remove();
-                                userPresenceRef = roomRef.child('players/playerO');
-                                userPresenceRef.onDisconnect().remove();
-                            }
-                        });
-                        return;
-                    }
-                }
 
                 let mySpecLabel = '';
                 if (myRole === 'Spectator') {
@@ -448,7 +412,8 @@
                     }
                 }
 
-                document.getElementById('viewerCount').innerText = `Viewers: ${specKeys.length}`;
+                document.getElementById('roomCounts').innerText = `Players: ${activePlayersCount}/2 | Viewers: ${specKeys.length}`;
+                
                 const specInfo = document.getElementById('spectatorInfo');
                 if (myRole === 'Spectator') {
                     specInfo.classList.remove('hidden');
@@ -476,9 +441,11 @@
 
         function makeMove(index) {
             if (gameOver || boardState[index] !== "") return;
-            if (myRole === 'Spectator') return;
+            if (isOnlineMode && myRole === 'Spectator') return;
 
-            if (currentTurn !== myRole) return;
+            if (isOnlineMode) {
+                if (currentTurn !== myRole) return;
+            }
 
             let symbol = currentTurn;
             let removedIndex = null;
@@ -502,23 +469,27 @@
             checkWin();
             updateUI();
 
-            roomRef.update({
-                boardState: boardState,
-                currentTurn: currentTurn,
-                scores: scores,
-                playerMoves: playerMoves,
-                moveHistory: moveHistory,
-                gameOver: gameOver,
-                winningPattern: winningPattern,
-                startingPlayer: startingPlayer
-            });
+            if (isOnlineMode) {
+                roomRef.update({
+                    boardState: boardState,
+                    currentTurn: currentTurn,
+                    scores: scores,
+                    playerMoves: playerMoves,
+                    moveHistory: moveHistory,
+                    gameOver: gameOver,
+                    winningPattern: winningPattern,
+                    startingPlayer: startingPlayer
+                });
+            }
         }
 
         function undoMove() {
-            if (moveHistory.length === 0 || myRole === 'Spectator') return;
+            if (moveHistory.length === 0 || (isOnlineMode && myRole === 'Spectator')) return;
 
-            let lastMove = moveHistory[moveHistory.length - 1];
-            if (lastMove.symbol !== myRole) return;
+            if (isOnlineMode) {
+                let lastMove = moveHistory[moveHistory.length - 1];
+                if (lastMove.symbol !== myRole) return;
+            }
 
             if (gameOver) {
                 let lastWinner = boardState[winningPattern[0]];
@@ -542,16 +513,18 @@
             currentTurn = lastMovePopped.symbol;
             updateUI();
 
-            roomRef.update({
-                boardState: boardState,
-                currentTurn: currentTurn,
-                scores: scores,
-                playerMoves: playerMoves,
-                moveHistory: moveHistory,
-                gameOver: gameOver,
-                winningPattern: winningPattern,
-                startingPlayer: startingPlayer
-            });
+            if (isOnlineMode) {
+                roomRef.update({
+                    boardState: boardState,
+                    currentTurn: currentTurn,
+                    scores: scores,
+                    playerMoves: playerMoves,
+                    moveHistory: moveHistory,
+                    gameOver: gameOver,
+                    winningPattern: winningPattern,
+                    startingPlayer: startingPlayer
+                });
+            }
         }
 
         function updateUI() {
@@ -568,14 +541,18 @@
 
             if (gameOver) return;
 
-            if (myRole === 'Spectator') {
-                document.getElementById('status').innerText = `Turn: Player ${currentTurn}'s turn`;
-            } else {
-                if (currentTurn === myRole) {
-                    document.getElementById('status').innerText = `Your turn (${myRole})`;
+            if (isOnlineMode) {
+                if (myRole === 'Spectator') {
+                    document.getElementById('status').innerText = `Turn: Player ${currentTurn}'s turn`;
                 } else {
-                    document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
+                    if (currentTurn === myRole) {
+                        document.getElementById('status').innerText = `Your turn (${myRole})`;
+                    } else {
+                        document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
+                    }
                 }
+            } else {
+                document.getElementById('status').innerText = `Turn: Player ${currentTurn}`;
             }
         }
 
@@ -603,7 +580,7 @@
         function sendChatMessage() {
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || !isOnlineMode) return;
 
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val() || {};
@@ -646,7 +623,7 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        function copyRoomCode() {
+    function copyRoomCode() {
             if (currentRoomId) {
                 navigator.clipboard.writeText(currentRoomId).then(() => {
                     const copyBtn = document.getElementById('copyBtn');
@@ -658,8 +635,8 @@
             }
         }
 
-    function resetGame() {
-            if (myRole === 'Spectator') return;
+        function resetGame() {
+            if (isOnlineMode && myRole === 'Spectator') return;
             
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
@@ -670,16 +647,18 @@
             winningPattern = [];
             
             updateUI();
-            roomRef.update({
-                boardState: boardState,
-                currentTurn: currentTurn,
-                scores: scores,
-                playerMoves: playerMoves,
-                moveHistory: moveHistory,
-                gameOver: gameOver,
-                winningPattern: winningPattern,
-                startingPlayer: startingPlayer
-            });
+            if (isOnlineMode) {
+                roomRef.update({
+                    boardState: boardState,
+                    currentTurn: currentTurn,
+                    scores: scores,
+                    playerMoves: playerMoves,
+                    moveHistory: moveHistory,
+                    gameOver: gameOver,
+                    winningPattern: winningPattern,
+                    startingPlayer: startingPlayer
+                });
+            }
         }
 
         function backToMenu() {
