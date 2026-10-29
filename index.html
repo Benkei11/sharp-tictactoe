@@ -73,18 +73,23 @@
             margin-top: 15px;
             font-size: 18px;
         }
+        .back-btn {
+            margin-top: 10px;
+            font-size: 14px;
+            padding: 8px 15px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>SHARP XO</h1>
+    <h1>Sharp XO</h1>
 
     <!-- Main menu for creating or joining a room -->
     <div id="menu" class="menu">
-        <button onclick="createGame()">Create New Room</button>
+        <button onclick="createGame()">Create new room</button>
         <div style="margin-top: 10px;">
-            <input type="text" id="roomCodeInput" placeholder="Enter Room Code">
-            <button onclick="joinGame()">Join Room</button>
+            <input type="text" id="roomCodeInput" placeholder="Enter room code">
+            <button onclick="joinGame()">Join room</button>
         </div>
     </div>
 
@@ -103,6 +108,7 @@
             <div class="cell" onclick="makeMove(8)"></div>
         </div>
         <div id="roomInfo" style="margin-top: 15px; font-size: 14px; color: #888;"></div>
+        <button class="back-btn" onclick="backToMenu()">Back to menu</button>
     </div>
 
     <script>
@@ -111,8 +117,8 @@
         let mySymbol = '';
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
-        // FIFO limit rule: Maximum 3 markers per player
         let playerMoves = { 'X': [], 'O': [] };
+        let gameOver = false;
 
         function createGame() {
             peer = new Peer();
@@ -122,14 +128,14 @@
             peer.on('open', (id) => {
                 document.getElementById('menu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('status').innerText = 'Room created! Waiting for player 2...';
-                document.getElementById('roomInfo').innerText = 'Room Code: ' + id;
+                document.getElementById('status').innerText = 'Room created, waiting for player 2...';
+                document.getElementById('roomInfo').innerText = 'Room code: ' + id;
             });
 
             peer.on('connection', (connection) => {
                 conn = connection;
                 setupConnection();
-                document.getElementById('status').innerText = 'Player joined! Your turn (X)';
+                document.getElementById('status').innerText = 'Player joined, your turn (X)';
             });
         }
 
@@ -147,13 +153,19 @@
             peer.on('open', () => {
                 conn = peer.connect(roomCode);
                 setupConnection();
-                document.getElementById('menu').classList.add('hidden');
-                document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('status').innerText = 'Connected! Player (X) goes first.';
+                document.getElementById('status').innerText = 'Connected, player (X) goes first.';
             });
         }
 
         function setupConnection() {
+            conn.on('open', () => {
+                if (!isHost) {
+                    document.getElementById('menu').classList.add('hidden');
+                    document.getElementById('gameContainer').classList.remove('hidden');
+                    document.getElementById('roomInfo').innerText = 'Connected to room successfully';
+                }
+            });
+
             conn.on('data', (data) => {
                 if (data.type === 'move') {
                     applyMove(data.index, data.symbol, false);
@@ -162,7 +174,7 @@
         }
 
         function makeMove(index) {
-            if (boardState[index] !== "" || currentTurn !== mySymbol) return;
+            if (gameOver || boardState[index] !== "" || currentTurn !== mySymbol) return;
 
             applyMove(index, mySymbol, true);
 
@@ -172,6 +184,9 @@
         }
 
         function applyMove(index, symbol, isLocal) {
+            if (boardState[index] !== "") return;
+
+            // FIFO rule: max 3 markers per player
             if (playerMoves[symbol].length >= 3) {
                 let oldestIndex = playerMoves[symbol].shift();
                 boardState[oldestIndex] = "";
@@ -192,6 +207,8 @@
                 cell.innerText = boardState[i];
             });
 
+            if (gameOver) return;
+
             if (currentTurn === mySymbol) {
                 document.getElementById('status').innerText = 'Your turn (' + mySymbol + ')';
             } else {
@@ -209,11 +226,18 @@
             for (let pattern of winPatterns) {
                 const [a, b, c] = pattern;
                 if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-                    document.getElementById('status').innerText = 'Winner: Player ' + boardState[a] + '! 🎉';
-                    currentTurn = '';
+                    document.getElementById('status').innerText = 'Winner is player ' + boardState[a] + '!';
+                    gameOver = true;
                     return;
                 }
             }
+        }
+
+        function backToMenu() {
+            if (peer) {
+                peer.destroy();
+            }
+            window.location.reload();
         }
     </script>
 </body>
