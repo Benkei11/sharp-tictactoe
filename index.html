@@ -200,7 +200,6 @@
             updateUI();
         }
 
-        // زر الإنشاء: يخبر المستخدم بأن الكود مستخدم فقط
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -248,17 +247,23 @@
                 }
 
                 const data = snapshot.val();
-                const activePlayersCount = data.players ? Object.keys(data.players).length : 0;
+                const playersObj = data.players || {};
+                const activePlayersCount = Object.keys(playersObj).length;
 
-                if (activePlayersCount >= 2) {
+                // منع دخول أكثر من لاعبين بشكل صارم
+                if (activePlayersCount >= 2 && !playersObj.playerO && !playersObj.playerX) {
                     alert('Room is full (2 players inside). Cannot join.');
                     return;
                 }
 
-                if (data.players && data.players.playerX) {
+                // تحديد الرمز بناءً على الشواغر المتاحة بدقة
+                if (!playersObj.playerX) {
+                    mySymbol = 'X';
+                } else if (!playersObj.playerO) {
                     mySymbol = 'O';
                 } else {
-                    mySymbol = 'X';
+                    alert('Room is full (2 players inside). Cannot join.');
+                    return;
                 }
 
                 enterRoomAsPlayer();
@@ -288,13 +293,9 @@
                     });
                 }
                 
-                if (mySymbol === 'X') {
-                    roomRef.child('players/playerX').set(true);
-                    roomRef.child('players/playerX').onDisconnect().remove();
-                } else {
-                    roomRef.child('players/playerO').set(true);
-                    roomRef.child('players/playerO').onDisconnect().remove();
-                }
+                const playerKey = 'player' + mySymbol;
+                roomRef.child('players/' + playerKey).set(true);
+                roomRef.child('players/' + playerKey).onDisconnect().remove();
 
                 attachRoomListener();
             });
@@ -302,11 +303,7 @@
 
         function leaveRoomClean() {
             if (roomRef && mySymbol) {
-                if (mySymbol === 'X') {
-                    roomRef.child('players/playerX').remove();
-                } else {
-                    roomRef.child('players/playerO').remove();
-                }
+                roomRef.child('players/player' + mySymbol).remove();
                 roomRef.off();
             }
         }
@@ -316,8 +313,11 @@
                 const data = snapshot.val();
                 if (!data) return;
 
-                const players = data.players ? Object.keys(data.players).length : 0;
-                if (players === 0) {
+                const playersObj = data.players || {};
+                const playersCount = Object.keys(playersObj).length;
+
+                // نظام التحقق من خلو الغرفة وحذفها بعد 3 دقائق
+                if (playersCount === 0) {
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
                     } else if (Date.now() - data.emptySince > 180000) {
