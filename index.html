@@ -16,18 +16,18 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
         h1 {
             letter-spacing: 2px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .menu, .game-container, .online-menu {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
         .hidden {
             display: none !important;
@@ -50,19 +50,19 @@
         }
         .board {
             display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-template-rows: repeat(3, 100px);
+            grid-template-columns: repeat(3, 90px);
+            grid-template-rows: repeat(3, 90px);
             gap: 5px;
             background: #fff;
             padding: 5px;
-            margin-top: 15px;
+            margin-top: 10px;
         }
         .cell {
             background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
+            font-size: 35px;
             font-weight: bold;
             cursor: pointer;
             user-select: none;
@@ -74,13 +74,14 @@
             background: #fff !important;
             color: #000 !important;
         }
-        #status {
-            margin-top: 10px;
-            font-size: 18px;
+        #status, #spectatorInfo, #viewerCount {
+            margin-top: 5px;
+            font-size: 16px;
+            text-align: center;
         }
         #scoreboard {
-            font-size: 16px;
-            margin-bottom: 5px;
+            font-size: 15px;
+            margin-bottom: 2px;
             letter-spacing: 1px;
         }
         .action-btns {
@@ -91,8 +92,44 @@
             margin-top: 10px;
         }
         .small-btn {
-            font-size: 14px;
-            padding: 8px 12px;
+            font-size: 13px;
+            padding: 6px 12px;
+        }
+        /* Chat box styling */
+        .chat-container {
+            width: 290px;
+            border: 2px solid #fff;
+            margin-top: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #111;
+            border-radius: 4px;
+        }
+        .chat-messages {
+            height: 90px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            padding: 5px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: left;
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 5px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            padding: 5px;
+            font-size: 13px;
+        }
+        .chat-input-area button {
+            padding: 5px 10px;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -102,19 +139,19 @@
 
     <!-- Main Menu -->
     <div id="mainMenu" class="menu">
-        <button onclick="showOnlineMenu()">Online multiplayer</button>
-        <button onclick="startLocalGame()">Offline multiplayer</button>
+        <button onclick="showOnlineMenu()">Online Multiplayer</button>
+        <button onclick="startLocalGame()">Offline Multiplayer</button>
     </div>
 
     <!-- Online Menu -->
     <div id="onlineMenu" class="online-menu hidden">
         <div style="display: flex; gap: 10px;">
             <input type="text" id="customRoomInput" placeholder="Enter room code">
-            <button onclick="createCustomGame()">Create room</button>
+            <button onclick="createCustomGame()">Create Room</button>
         </div>
         <div style="margin-top: 10px; display: flex; gap: 10px;">
             <input type="text" id="roomCodeInput" placeholder="Enter room code">
-            <button onclick="joinGame()">Join room</button>
+            <button onclick="joinGame()">Join Room</button>
         </div>
         <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
@@ -122,7 +159,10 @@
     <!-- Game Container -->
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
+        <div id="viewerCount">👁️ Viewers (0)</div>
+        <div id="spectatorInfo" class="hidden" style="color: #0ff; font-weight: bold;"></div>
         <div id="status">Connecting...</div>
+        
         <div class="board" id="board">
             <div class="cell" onclick="makeMove(0)"></div>
             <div class="cell" onclick="makeMove(1)"></div>
@@ -135,13 +175,22 @@
             <div class="cell" onclick="makeMove(8)"></div>
         </div>
         
-        <div id="roomInfo" style="margin-top: 10px; font-size: 14px; color: #888; text-align: center;"></div>
+        <div id="roomInfo" style="margin-top: 5px; font-size: 13px; color: #888; text-align: center;"></div>
         
+        <!-- Chat System -->
+        <div class="chat-container">
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="⌨️ Type message (AR/EN)...">
+                <button onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+
         <div class="action-btns">
-            <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
-            <button class="small-btn" onclick="undoMove()">Undo</button>
-            <button class="small-btn" onclick="resetGame()">Reset game</button>
-            <button class="small-btn" onclick="backToMenu()">Back to menu</button>
+            <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy Code</button>
+            <button id="undoBtn" class="small-btn" onclick="undoMove()">Undo</button>
+            <button id="resetBtn" class="small-btn" onclick="resetGame()">Reset Game</button>
+            <button class="small-btn" onclick="backToMenu()">Back to Menu</button>
         </div>
     </div>
 
@@ -156,10 +205,10 @@
         const db = firebase.database();
 
         let currentRoomId = '';
-        let mySymbol = 'X';
+        let myRole = 'X'; 
         let isOnlineMode = false;
         let roomRef = null;
-        let playerRef = null;
+        let userPresenceRef = null;
 
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
@@ -184,7 +233,7 @@
 
         function startLocalGame() {
             isOnlineMode = false;
-            mySymbol = 'X';
+            myRole = 'X';
             scores = { 'X': 0, 'O': 0 };
             startingPlayer = 'X';
             currentTurn = 'X';
@@ -196,12 +245,14 @@
 
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerText = '';
+            document.getElementById('roomInfo').innerText = 'Offline Local Mode';
             document.getElementById('copyBtn').classList.add('hidden');
+            document.getElementById('viewerCount').classList.add('hidden');
+            document.getElementById('spectatorInfo').classList.add('hidden');
             updateUI();
         }
 
-        // فحص ذكي يسمح بإنشاء الغرفة أو تجاوزها إذا كانت فارغة تماماً
+        // زر الإنشاء: فحص صارم يمنع الكتابة فوق أي غرفة نشطة تحتوي على بيانات أو لعبة غير منتهية
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -218,17 +269,13 @@
             roomRef.once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    const playersCount = data.players ? Object.keys(data.players).length : 0;
-                    
-                    // إذا كان هناك لاعبون متواجدون بالفعل، نرفض الكود
-                    if (playersCount > 0) {
-                        alert('This code is already in use by active players.');
+                    // إذا وُجدت أي بيانات في الغرفة أو لم تنتهِ اللعبة، نرفض الإنشاء تماماً
+                    if (data && (data.players || (data.boardState && data.boardState.some(cell => cell !== "")) || data.scores)) {
+                        alert('This room code is already in use or contains active game data. You cannot overwrite it.');
                         return;
                     }
                 }
-
-                mySymbol = 'X';
-                setupAndEnterRoom(true);
+                setupRoomAndJoin('X');
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
@@ -255,36 +302,29 @@
 
                 const data = snapshot.val();
                 const playersObj = data.players || {};
-                const activeCount = Object.keys(playersObj).length;
-
-                if (activeCount >= 2) {
-                    alert('Room is full (2 players inside). Cannot join.');
-                    return;
-                }
 
                 if (!playersObj.playerX) {
-                    mySymbol = 'X';
+                    setupRoomAndJoin('X');
                 } else if (!playersObj.playerO) {
-                    mySymbol = 'O';
+                    setupRoomAndJoin('O');
                 } else {
-                    alert('Room is full (2 players inside). Cannot join.');
-                    return;
+                    setupRoomAndJoin('Spectator');
                 }
-
-                setupAndEnterRoom(false);
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
-        function setupAndEnterRoom(isCreator) {
+        function setupRoomAndJoin(assignedRole) {
+            myRole = assignedRole;
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
+            document.getElementById('roomInfo').innerHTML = 'Room Code: ' + currentRoomId;
             document.getElementById('copyBtn').classList.remove('hidden');
+            document.getElementById('viewerCount').classList.remove('hidden');
 
             roomRef.once('value').then((snapshot) => {
-                if (isCreator || !snapshot.exists() || !snapshot.val().boardState) {
+                if (!snapshot.exists() || !snapshot.val().boardState) {
                     roomRef.set({
                         boardState: ["", "", "", "", "", "", "", "", ""],
                         currentTurn: 'X',
@@ -293,23 +333,33 @@
                         moveHistory: [],
                         gameOver: false,
                         winningPattern: [],
-                        startingPlayer: 'X',
-                        emptySince: null
+                        startingPlayer: 'X'
                     });
                 }
                 
-                playerRef = roomRef.child('players/player' + mySymbol);
-                playerRef.set(true);
-                playerRef.onDisconnect().remove();
+                if (myRole !== 'Spectator') {
+                    userPresenceRef = roomRef.child('players/player' + myRole);
+                    userPresenceRef.set(true);
+                    userPresenceRef.onDisconnect().remove();
+                    document.getElementById('spectatorInfo').classList.add('hidden');
+                } else {
+                    userPresenceRef = roomRef.child('spectators/' + Math.random().toString(36).substring(2, 8));
+                    userPresenceRef.set(true);
+                    userPresenceRef.onDisconnect().remove();
+                    
+                    const specInfo = document.getElementById('spectatorInfo');
+                    specInfo.classList.remove('hidden');
+                    specInfo.innerText = "👁️ Spectator Mode (Watching Player Turn)";
+                }
 
                 attachRoomListener();
             });
         }
 
         function leaveRoomClean() {
-            if (playerRef) {
-                playerRef.remove();
-                playerRef = null;
+            if (userPresenceRef) {
+                userPresenceRef.remove();
+                userPresenceRef = null;
             }
             if (roomRef) {
                 roomRef.off();
@@ -321,28 +371,13 @@
                 const data = snapshot.val();
                 if (!data) return;
 
-                const playersObj = data.players || {};
-                const playersCount = Object.keys(playersObj).length;
-
-                if (playersCount === 0) {
-                    if (!data.emptySince) {
-                        roomRef.update({ emptySince: Date.now() });
-                    } else if (Date.now() - data.emptySince > 180000) {
-                        roomRef.remove();
-                        alert('Room expired and code unlinked due to inactivity.');
-                        window.location.reload();
-                        return;
-                    }
-                } else {
-                    if (data.emptySince) {
-                        roomRef.update({ emptySince: null });
-                    }
-                }
+                const spectatorsObj = data.spectators || {};
+                const viewersCount = Object.keys(spectatorsObj).length;
+                document.getElementById('viewerCount').innerText = `👁️ Viewers (${viewersCount})`;
 
                 boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
                 currentTurn = data.currentTurn || 'X';
                 scores = data.scores || { 'X': 0, 'O': 0 };
-                
                 playerMoves = data.playerMoves || { 'X': [], 'O': [] };
                 if (!playerMoves['X']) playerMoves['X'] = [];
                 if (!playerMoves['O']) playerMoves['O'] = [];
@@ -352,15 +387,17 @@
                 winningPattern = data.winningPattern || [];
                 startingPlayer = data.startingPlayer || 'X';
 
+                renderChatMessages(data.messages || {});
                 updateUI();
             });
         }
 
         function makeMove(index) {
             if (gameOver || boardState[index] !== "") return;
+            if (isOnlineMode && myRole === 'Spectator') return;
 
             if (isOnlineMode) {
-                if (currentTurn !== mySymbol) return;
+                if (currentTurn !== myRole) return;
             }
 
             let symbol = currentTurn;
@@ -400,11 +437,11 @@
         }
 
         function undoMove() {
-            if (moveHistory.length === 0) return;
+            if (moveHistory.length === 0 || (isOnlineMode && myRole === 'Spectator')) return;
 
             if (isOnlineMode) {
                 let lastMove = moveHistory[moveHistory.length - 1];
-                if (lastMove.symbol !== mySymbol) return;
+                if (lastMove.symbol !== myRole) return;
             }
 
             if (gameOver) {
@@ -453,18 +490,22 @@
                 }
             });
 
-            document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
+            document.getElementById('scoreboard').innerText = `Score - X: ${scores['X']} | O: ${scores['O']}`;
 
             if (gameOver) return;
 
             if (isOnlineMode) {
-                if (currentTurn === mySymbol) {
-                    document.getElementById('status').innerText = 'Your turn (' + mySymbol + ')';
+                if (myRole === 'Spectator') {
+                    document.getElementById('status').innerText = `👁️ Spectating: Player ${currentTurn}'s Turn`;
                 } else {
-                    document.getElementById('status').innerText = "Opponent's turn...";
+                    if (currentTurn === myRole) {
+                        document.getElementById('status').innerText = `Your turn (${myRole})`;
+                    } else {
+                        document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
+                    }
                 }
             } else {
-                document.getElementById('status').innerText = 'Turn: player ' + currentTurn;
+                document.getElementById('status').innerText = `Turn: Player ${currentTurn}`;
             }
         }
 
@@ -481,12 +522,43 @@
                     let winner = boardState[a];
                     scores[winner]++;
                     winningPattern = [a, b, c];
-                    document.getElementById('status').innerText = 'Winner is player ' + winner + '!';
-                    document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
+                    document.getElementById('status').innerText = `Winner is Player ${winner}!`;
+                    document.getElementById('scoreboard').innerText = `Score - X: ${scores['X']} | O: ${scores['O']}`;
                     gameOver = true;
                     return;
                 }
             }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || !isOnlineMode) return;
+
+            const senderLabel = (myRole === 'Spectator') ? 'Viewer' : `Player ${myRole}`;
+            const msgRef = roomRef.child('messages').push();
+            msgRef.set({
+                sender: senderLabel,
+                text: text,
+                timestamp: Date.now()
+            });
+            input.value = '';
+        }
+
+        function renderChatMessages(messagesObj) {
+            const chatContainer = document.getElementById('chatMessages');
+            chatContainer.innerHTML = '';
+            
+            const keys = Object.keys(messagesObj);
+            keys.sort((a, b) => messagesObj[a].timestamp - messagesObj[b].timestamp);
+
+            keys.forEach(key => {
+                const msg = messagesObj[key];
+                const div = document.createElement('div');
+                div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+                chatContainer.appendChild(div);
+            });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
         function copyRoomCode() {
@@ -495,13 +567,15 @@
                     const copyBtn = document.getElementById('copyBtn');
                     copyBtn.innerText = 'Copied!';
                     setTimeout(() => {
-                        copyBtn.innerText = 'Copy code';
+                        copyBtn.innerText = 'Copy Code';
                     }, 2000);
                 });
             }
         }
 
         function resetGame() {
+            if (isOnlineMode && myRole === 'Spectator') return;
+            
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
