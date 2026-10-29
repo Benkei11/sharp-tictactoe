@@ -21,6 +21,7 @@
         }
         h1 {
             letter-spacing: 2px;
+            text-transform: uppercase;
             margin-bottom: 5px;
         }
         .menu, .game-container, .online-menu {
@@ -40,6 +41,7 @@
             font-size: 15px;
             cursor: pointer;
             border-radius: 4px;
+            text-transform: capitalize;
         }
         button:hover {
             background: #fff;
@@ -113,6 +115,7 @@
             text-align: center;
             border-bottom: 1px solid #444;
             padding-bottom: 3px;
+            text-transform: uppercase;
         }
         .chat-messages {
             height: 80px;
@@ -213,8 +216,14 @@
         const db = firebase.database();
 
         let currentRoomId = '';
-        let myRole = 'X'; 
-        let mySessionId = 'user_' + Math.random().toString(36).substring(2, 8);
+        let myRole = 'Spectator'; 
+        
+        let mySessionId = localStorage.getItem('xo_session_id');
+        if (!mySessionId) {
+            mySessionId = 'user_' + Math.random().toString(36).substring(2, 10);
+            localStorage.setItem('xo_session_id', mySessionId);
+        }
+
         let isOnlineMode = false;
         let roomRef = null;
         let userPresenceRef = null;
@@ -254,11 +263,11 @@
 
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerText = ''; // إزالة أي نص داخلي
+            document.getElementById('roomInfo').innerText = '';
             document.getElementById('copyBtn').classList.add('hidden');
             document.getElementById('roomCounts').classList.add('hidden');
             document.getElementById('spectatorInfo').classList.add('hidden');
-            document.getElementById('chatBoxContainer').classList.add('hidden'); // إزالة شات الـ offline لعدم حاجته
+            document.getElementById('chatBoxContainer').classList.add('hidden');
             updateUI();
         }
 
@@ -267,7 +276,7 @@
             const customCode = inputField.value.trim();
             
             if (!customCode) {
-                alert('Please enter a room code.');
+                alert('Enter room code.');
                 return;
             }
 
@@ -279,13 +288,13 @@
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     if (data && (data.players || (data.boardState && data.boardState.some(cell => cell !== "")) || data.scores)) {
-                        alert('This room code is already in use or contains active game data. You cannot overwrite it.');
+                        alert('Room in use.');
                         return;
                     }
                 }
-                setupRoomAndJoin('X');
+                setupRoomAndJoin();
             }).catch((error) => {
-                alert('Connection error: ' + error.message);
+                alert('Connection error.');
             });
         }
 
@@ -294,7 +303,7 @@
             const roomCode = inputField.value.trim();
             
             if (!roomCode) {
-                alert('Please enter a room code to join.');
+                alert('Enter room code.');
                 return;
             }
 
@@ -304,26 +313,16 @@
 
             roomRef.once('value').then((snapshot) => {
                 if (!snapshot.exists()) {
-                    alert('Room does not exist. Check the code.');
+                    alert('Room not found.');
                     return;
                 }
-
-                const data = snapshot.val();
-                const playersObj = data.players || {};
-
-                if (!playersObj.playerX) {
-                    setupRoomAndJoin('X');
-                } else if (!playersObj.playerO) {
-                    setupRoomAndJoin('O');
-                } else {
-                    setupRoomAndJoin('Spectator');
-                }
+                setupRoomAndJoin();
             }).catch((error) => {
-                alert('Connection error: ' + error.message);
+                alert('Connection error.');
             });
         }
 
-        function setupRoomAndJoin(assignedRole) {
+        function setupRoomAndJoin() {
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerHTML = 'Room Code: ' + currentRoomId;
@@ -350,31 +349,36 @@
                 if (!roomData.players) roomData.players = {};
                 if (!roomData.spectators) roomData.spectators = {};
 
-                if (assignedRole === 'X' && !roomData.players.playerX) {
+                if (roomData.players.playerX === mySessionId) {
+                    // مسموح له بالعودة لمقعده
+                } else if (roomData.players.playerO === mySessionId) {
+                    // مسموح له بالعودة لمقعده
+                } else if (!roomData.players.playerX) {
                     roomData.players.playerX = mySessionId;
-                    myRole = 'X';
-                } else if (assignedRole === 'O' && !roomData.players.playerO) {
+                } else if (!roomData.players.playerO) {
                     roomData.players.playerO = mySessionId;
-                    myRole = 'O';
                 } else {
                     roomData.spectators[mySessionId] = true;
-                    myRole = 'Spectator';
                 }
+
                 return roomData;
             }, (error, committed, snapshot) => {
                 if (error) {
                     alert('Error joining room.');
                 } else {
                     const data = snapshot.val();
-                    if (data.players && data.players.playerX === mySessionId) {
+                    const players = data.players || {};
+
+                    if (players.playerX === mySessionId) {
                         myRole = 'X';
                         userPresenceRef = roomRef.child('players/playerX');
-                    } else if (data.players && data.players.playerO === mySessionId) {
+                    } else if (players.playerO === mySessionId) {
                         myRole = 'O';
                         userPresenceRef = roomRef.child('players/playerO');
                     } else {
                         myRole = 'Spectator';
                         userPresenceRef = roomRef.child('spectators/' + mySessionId);
+                        userPresenceRef.set(true);
                     }
 
                     userPresenceRef.onDisconnect().remove();
@@ -401,9 +405,20 @@
                 const players = data.players || {};
                 const specs = data.spectators || {};
                 
-                const activePlayersCount = Object.keys(players).length;
-                const specKeys = Object.keys(specs);
+                if (players.playerX === mySessionId) {
+                    myRole = 'X';
+                } else if (players.playerO === mySessionId) {
+                    myRole = 'O';
+                } else {
+                    myRole = 'Spectator';
+                    roomRef.child('spectators/' + mySessionId).set(true);
+                }
 
+                let activePlayersCount = 0;
+                if (players.playerX) activePlayersCount++;
+                if (players.playerO) activePlayersCount++;
+
+                const specKeys = Object.keys(specs);
                 let mySpecLabel = '';
                 if (myRole === 'Spectator') {
                     const index = specKeys.indexOf(mySessionId);
@@ -441,9 +456,9 @@
 
         function makeMove(index) {
             if (gameOver || boardState[index] !== "") return;
-            if (isOnlineMode && myRole === 'Spectator') return;
-
+            
             if (isOnlineMode) {
+                if (myRole === 'Spectator') return;
                 if (currentTurn !== myRole) return;
             }
 
@@ -484,7 +499,8 @@
         }
 
         function undoMove() {
-            if (moveHistory.length === 0 || (isOnlineMode && myRole === 'Spectator')) return;
+            if (moveHistory.length === 0) return;
+            if (isOnlineMode && myRole === 'Spectator') return;
 
             if (isOnlineMode) {
                 let lastMove = moveHistory[moveHistory.length - 1];
@@ -623,7 +639,7 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-    function copyRoomCode() {
+        function copyRoomCode() {
             if (currentRoomId) {
                 navigator.clipboard.writeText(currentRoomId).then(() => {
                     const copyBtn = document.getElementById('copyBtn');
