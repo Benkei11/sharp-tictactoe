@@ -215,9 +215,12 @@
 
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
-                if (data && data.boardState) {
-                    alert('This code is already in use.');
-                    return;
+                if (data && data.players) {
+                    const activeCount = Object.keys(data.players).length;
+                    if (activeCount > 0) {
+                        alert('This code is already in use.');
+                        return;
+                    }
                 }
 
                 mySymbol = 'X';
@@ -248,16 +251,20 @@
 
                 const data = snapshot.val();
                 const playersObj = data.players || {};
+                const activePlayersCount = Object.keys(playersObj).length;
 
-                if (playersObj.playerX && playersObj.playerO) {
+                if (activePlayersCount >= 2) {
                     alert('Room is full (2 players inside). Cannot join.');
                     return;
                 }
 
                 if (!playersObj.playerX) {
                     mySymbol = 'X';
-                } else {
+                } else if (!playersObj.playerO) {
                     mySymbol = 'O';
+                } else {
+                    alert('Room is full (2 players inside). Cannot join.');
+                    return;
                 }
 
                 enterRoomAsPlayer();
@@ -288,8 +295,9 @@
                 }
                 
                 const playerKey = 'player' + mySymbol;
-                roomRef.child('players/' + playerKey).set(true);
-                roomRef.child('players/' + playerKey).onDisconnect().remove();
+                const playerRef = roomRef.child('players/' + playerKey);
+                playerRef.set(true);
+                playerRef.onDisconnect().remove();
 
                 attachRoomListener();
             });
