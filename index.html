@@ -427,7 +427,7 @@
             }
 
             let symbol = currentTurn;
-            boardState[index] = symbol;
+            boardState[index] = symbol; // وضع العلامة دون مسح أي شيء سابق
 
             currentTurn = (symbol === 'X') ? 'O' : 'X';
 
@@ -491,9 +491,12 @@
                 }
             }
 
-            // فحص التعادل إذا كانت اللوحة ممتلئة ولا يوجد فائز
+            // فحص التعادل وإضافة نصف نقطة لكل طرف
             if (!boardState.includes("")) {
-                document.getElementById('status').innerText = `It's a draw!`;
+                scores['X'] += 0.5;
+                scores['O'] += 0.5;
+                document.getElementById('status').innerText = `It's a draw! (+0.5 each)`;
+                document.getElementById('scoreboard').innerText = `Score - X: ${scores['X']} | O: ${scores['O']}`;
                 gameOver = true;
             }
         }
