@@ -181,7 +181,7 @@
             currentTurn = 'X';
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo.innerText = ''');
+            document.getElementById('roomInfo').innerText = '';
             document.getElementById('copyBtn').classList.add('hidden');
             updateUI();
         }
@@ -331,7 +331,6 @@
                 if (lastMove.symbol !== mySymbol) return;
             }
 
-            // If game was over, undoing should revert the win state and score increment
             if (gameOver) {
                 let lastWinner = boardState[winningPattern[0]];
                 if (scores[lastWinner] > 0) scores[lastWinner]--;
