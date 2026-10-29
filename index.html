@@ -248,22 +248,16 @@
 
                 const data = snapshot.val();
                 const playersObj = data.players || {};
-                const activePlayersCount = Object.keys(playersObj).length;
 
-                // منع دخول أكثر من لاعبين بشكل صارم
-                if (activePlayersCount >= 2 && !playersObj.playerO && !playersObj.playerX) {
+                if (playersObj.playerX && playersObj.playerO) {
                     alert('Room is full (2 players inside). Cannot join.');
                     return;
                 }
 
-                // تحديد الرمز بناءً على الشواغر المتاحة بدقة
                 if (!playersObj.playerX) {
                     mySymbol = 'X';
-                } else if (!playersObj.playerO) {
-                    mySymbol = 'O';
                 } else {
-                    alert('Room is full (2 players inside). Cannot join.');
-                    return;
+                    mySymbol = 'O';
                 }
 
                 enterRoomAsPlayer();
@@ -316,7 +310,6 @@
                 const playersObj = data.players || {};
                 const playersCount = Object.keys(playersObj).length;
 
-                // نظام التحقق من خلو الغرفة وحذفها بعد 3 دقائق
                 if (playersCount === 0) {
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
@@ -342,20 +335,6 @@
                 startingPlayer = data.startingPlayer || 'X';
 
                 updateUI();
-            });
-        }
-
-        function syncStateToFirebase() {
-            if (!isOnlineMode || !roomRef) return;
-            roomRef.update({
-                boardState: boardState,
-                currentTurn: currentTurn,
-                scores: scores,
-                playerMoves: playerMoves,
-                moveHistory: moveHistory,
-                gameOver: gameOver,
-                winningPattern: winningPattern,
-                startingPlayer: startingPlayer
             });
         }
 
@@ -385,7 +364,16 @@
             updateUI();
 
             if (isOnlineMode) {
-                syncStateToFirebase();
+                roomRef.update({
+                    boardState: boardState,
+                    currentTurn: currentTurn,
+                    scores: scores,
+                    playerMoves: playerMoves,
+                    moveHistory: moveHistory,
+                    gameOver: gameOver,
+                    winningPattern: winningPattern,
+                    startingPlayer: startingPlayer
+                });
             }
         }
 
@@ -417,7 +405,16 @@
             updateUI();
 
             if (isOnlineMode) {
-                syncStateToFirebase();
+                roomRef.update({
+                    boardState: boardState,
+                    currentTurn: currentTurn,
+                    scores: scores,
+                    playerMoves: playerMoves,
+                    moveHistory: moveHistory,
+                    gameOver: gameOver,
+                    winningPattern: winningPattern,
+                    startingPlayer: startingPlayer
+                });
             }
         }
 
@@ -490,7 +487,16 @@
             
             updateUI();
             if (isOnlineMode) {
-                syncStateToFirebase();
+                roomRef.update({
+                    boardState: boardState,
+                    currentTurn: currentTurn,
+                    scores: scores,
+                    playerMoves: playerMoves,
+                    moveHistory: moveHistory,
+                    gameOver: gameOver,
+                    winningPattern: winningPattern,
+                    startingPlayer: startingPlayer
+                });
             }
         }
 
