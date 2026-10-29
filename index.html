@@ -159,7 +159,7 @@
         let mySymbol = 'X';
         let isOnlineMode = false;
         let roomRef = null;
-        let clientId = 'client_' + Math.random().toString(36).substring(2, 9);
+        let playerRef = null;
 
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
@@ -201,7 +201,7 @@
             updateUI();
         }
 
-        // زر الإنشاء: يرفض تماماً إذا كانت الغرفة موجودة ولا يسمح بالدخول عبره
+        // زر الإنشاء: يرفض ويخبرك أن الكود مستخدم إذا كانت الغرفة موجودة بنشاط
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -217,19 +217,22 @@
 
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
-                if (data && data.boardState) {
-                    alert('This code is already in use.');
-                    return;
+                if (data && data.players) {
+                    const activePlayers = Object.keys(data.players);
+                    if (activePlayers.length > 0) {
+                        alert('This code is already in use.');
+                        return;
+                    }
                 }
 
                 mySymbol = 'X';
-                setupRoomAndEnter();
+                initializeAndEnterRoom();
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
-        // زر الانضمام: مخصص فقط للدخول للغرف الموجودة
+        // زر الانضمام: مخصص للدخول للغرف القائمة فقط
         function joinGame() {
             const inputField = document.getElementById('roomCodeInput');
             const roomCode = inputField.value.trim();
@@ -244,7 +247,7 @@
             roomRef = db.ref('rooms/' + currentRoomId);
 
             roomRef.once('value').then((snapshot) => {
-                if (!snapshot.exists() || !snapshot.val().boardState) {
+                if (!snapshot.exists()) {
                     alert('Room does not exist. Check the code.');
                     return;
                 }
@@ -267,13 +270,13 @@
                     return;
                 }
 
-                setupRoomAndEnter();
+                initializeAndEnterRoom();
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
-        function setupRoomAndEnter() {
+        function initializeAndEnterRoom() {
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
@@ -294,18 +297,20 @@
                     });
                 }
                 
-                const playerKey = 'player' + mySymbol;
-                const playerConnRef = roomRef.child('players/' + playerKey);
-                playerConnRef.set(clientId);
-                playerConnRef.onDisconnect().remove();
+                playerRef = roomRef.child('players/player' + mySymbol);
+                playerRef.set(true);
+                playerRef.onDisconnect().remove();
 
                 attachRoomListener();
             });
         }
 
         function leaveRoomClean() {
-            if (roomRef && mySymbol) {
-                roomRef.child('players/player' + mySymbol).remove();
+            if (playerRef) {
+                playerRef.remove();
+                playerRef = null;
+            }
+            if (roomRef) {
                 roomRef.off();
             }
         }
@@ -318,6 +323,7 @@
                 const playersObj = data.players || {};
                 const playersCount = Object.keys(playersObj).length;
 
+                // نظام الفحص التلقائي: إذا أصبحت الغرفة فارغة يتم حساب الوقت وحذفها بعد 3 دقائق
                 if (playersCount === 0) {
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
