@@ -159,7 +159,8 @@
         let gameOver = false;
         let winningPattern = [];
         let roomCodeText = '';
-        let startingPlayer = 'X'; // Tracks alternating starting player for rounds
+        let startingPlayer = 'X';
+        let emptyRoomTimer = null;
 
         function showOnlineMenu() {
             document.getElementById('mainMenu').classList.add('hidden');
@@ -198,7 +199,7 @@
             }
 
             roomCodeText = customCode;
-            peer = new Peer(roomCodeText);
+            peer = new Peer(roomCodeText, { debug: 1 });
             isHost = true;
             mySymbol = 'X';
             scores = { 'X': 0, 'O': 0 };
@@ -210,12 +211,14 @@
                 document.getElementById('status').innerText = 'Room created, waiting for player 2...';
                 document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + id + ')';
                 document.getElementById('copyBtn').classList.remove('hidden');
+                
+                // Start 3-minute empty room timer if no one is connected
+                startEmptyRoomTimer();
             });
 
             peer.on('error', (err) => {
                 if (err.type === 'unavailable-id') {
-                    alert('This room code is already active. Rejoining as host...');
-                    peer.destroy();
+                    // Reclaim room if it exists from previous session
                     peer = new Peer();
                     peer.on('open', () => {
                         conn = peer.connect(customCode);
@@ -231,6 +234,7 @@
 
             peer.on('connection', (connection) => {
                 conn = connection;
+                clearEmptyRoomTimer(); // Reset/Clear timeout since a player joined
                 setupConnection();
                 document.getElementById('status').innerText = 'Player joined, your turn (X)';
             });
@@ -260,7 +264,7 @@
             });
 
             peer.on('error', (err) => {
-                alert('Could not connect to room. Please make sure the room host has created the room first.');
+                alert('Could not connect to room. Make sure the room exists.');
             });
         }
 
@@ -285,8 +289,30 @@
             });
 
             conn.on('close', () => {
-                document.getElementById('status').innerText = 'Opponent left the room';
+                document.getElementById('status').innerText = 'Opponent left. Room active for 3 mins.';
+                if (isHost) {
+                    startEmptyRoomTimer();
+                }
             });
+        }
+
+        function startEmptyRoomTimer() {
+            clearEmptyRoomTimer();
+            // 3 minutes = 180,000 milliseconds
+            emptyRoomTimer = setTimeout(() => {
+                if (peer) {
+                    peer.destroy();
+                }
+                alert('Room expired due to inactivity.');
+                window.location.reload();
+            }, 180000);
+        }
+
+        function clearEmptyRoomTimer() {
+            if (emptyRoomTimer) {
+                clearTimeout(emptyRoomTimer);
+                emptyRoomTimer = null;
+            }
         }
 
         function makeMove(index) {
@@ -438,14 +464,10 @@
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
-            
-            // Alternate starting player sequentially for the new round
             startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
             currentTurn = startingPlayer;
-            
             gameOver = false;
             winningPattern = [];
-            // Scores remain preserved
             updateUI();
             if (isOnlineMode) {
                 document.getElementById('status').innerText = 'Game reset, turn: ' + currentTurn;
