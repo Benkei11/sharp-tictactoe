@@ -149,11 +149,11 @@
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
         let playerMoves = { 'X': [], 'O': [] };
-        let moveHistory = []; // Stack for tracking move history and scores
+        let moveHistory = [];
         let scores = { 'X': 0, 'O': 0 };
         let gameOver = false;
         let roomCodeText = '';
-        let startingPlayer = 'X'; // Tracks alternating starting player for rounds
+        let startingPlayer = 'X';
 
         function showOnlineMenu() {
             document.getElementById('mainMenu').classList.add('hidden');
@@ -175,7 +175,8 @@
             currentTurn = 'X';
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo.innerText = ''');
+            document.getElementById('roomInfo').innerText = '';
+            document.getElementById('copyBtn').classList.add('hidden');
             updateUI();
         }
 
@@ -200,7 +201,7 @@
             peer.on('open', (id) => {
                 document.getElementById('onlineMenu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('status.innerText = 'Room created, waiting for player 2...'';
+                document.getElementById('status').innerText = 'Room created, waiting for player 2...';
                 document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + id + ')';
                 document.getElementById('copyBtn').classList.remove('hidden');
             });
@@ -291,7 +292,6 @@
             if (boardState[index] !== "") return;
 
             let removedIndex = null;
-            // FIFO rule: max 3 markers per player
             if (playerMoves[symbol].length >= 3) {
                 removedIndex = playerMoves[symbol].shift();
                 boardState[removedIndex] = "";
@@ -300,7 +300,6 @@
             boardState[index] = symbol;
             playerMoves[symbol].push(index);
 
-            // Save state for undo history
             moveHistory.push({ index: index, symbol: symbol, removedIndex: removedIndex });
 
             currentTurn = (symbol === 'X') ? 'O' : 'X';
@@ -313,7 +312,6 @@
             if (gameOver || moveHistory.length === 0) return;
 
             if (isOnlineMode) {
-                // In online mode, only allow undoing your own last move or based on synchronization
                 let lastMove = moveHistory[moveHistory.length - 1];
                 if (lastMove.symbol !== mySymbol) return;
             }
@@ -328,7 +326,6 @@
         function undoMoveLocally(isLocalAction) {
             if (moveHistory.length === 0) return;
 
-            // If game was over, revert gameover state
             if (gameOver) {
                 gameOver = false;
             }
@@ -383,7 +380,6 @@
                     document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
                     gameOver = true;
 
-                    // Automatically start next round after a brief pause, alternating starting player
                     setTimeout(() => {
                         startNextRound();
                     }, 1500);
@@ -397,7 +393,6 @@
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
             gameOver = false;
-            // Alternate starting player sequentially
             startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
             currentTurn = startingPlayer;
             updateUI();
