@@ -146,7 +146,6 @@
     </div>
 
     <script>
-        // إعدادات قاعدة البيانات الجديدة الخاصة بمشروعك
         const firebaseConfig = {
             databaseURL: "https://sharp-tictactoe-default-rtdb.firebaseio.com/"
         };
@@ -201,6 +200,7 @@
             updateUI();
         }
 
+        // زر الإنشاء: يخبر المستخدم بأن الكود مستخدم فقط
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -216,8 +216,8 @@
 
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
-                if (data && data.players && Object.keys(data.players).length > 0) {
-                    alert('This code is already in use by active players. Choose another code.');
+                if (data && data.boardState) {
+                    alert('This code is already in use.');
                     return;
                 }
 
