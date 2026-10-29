@@ -280,7 +280,7 @@
                 } else if (data.type === 'undo') {
                     undoMoveLocally(false);
                 } else if (data.type === 'reset') {
-                    resetGameLocally(false);
+                    resetGameLocally();
                 }
             });
 
@@ -428,13 +428,13 @@
         }
 
         function resetGame() {
-            resetGameLocally(true);
+            resetGameLocally();
             if (isOnlineMode && conn && conn.open) {
                 conn.send({ type: 'reset' });
             }
         }
 
-        function resetGameLocally(fullReset) {
+        function resetGameLocally() {
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
@@ -442,9 +442,7 @@
             startingPlayer = 'X';
             gameOver = false;
             winningPattern = [];
-            if (fullReset) {
-                scores = { 'X': 0, 'O': 0 };
-            }
+            // Scores are preserved and NOT reset here
             updateUI();
             if (isOnlineMode) {
                 document.getElementById('status').innerText = 'Game reset, your turn (' + mySymbol + ')';
