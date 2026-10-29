@@ -427,7 +427,7 @@
             }
 
             let symbol = currentTurn;
-            boardState[index] = symbol; // وضع العلامة دون مسح أي شيء سابق
+            boardState[index] = symbol; // وضع العلامة بشكل ثابت دون أي حذف أو اختفاء
 
             currentTurn = (symbol === 'X') ? 'O' : 'X';
 
@@ -491,7 +491,7 @@
                 }
             }
 
-            // فحص التعادل وإضافة نصف نقطة لكل طرف
+            // فحص التعادل وإضافة نصف نقطة لكل طرف بدقة وتحديث الحظائر
             if (!boardState.includes("")) {
                 scores['X'] += 0.5;
                 scores['O'] += 0.5;
