@@ -208,7 +208,16 @@
 
             peer.on('error', (err) => {
                 if (err.type === 'unavailable-id') {
-                    alert('This room code is already taken or active. Try another one.');
+                    alert('This room code is already active. Rejoining as host...');
+                    peer.destroy();
+                    peer = new Peer();
+                    peer.on('open', () => {
+                        conn = peer.connect(customCode);
+                        setupConnection();
+                        document.getElementById('onlineMenu').classList.add('hidden');
+                        document.getElementById('gameContainer').classList.remove('hidden');
+                        document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + customCode + ')';
+                    });
                 } else {
                     alert('Connection error: ' + err.type);
                 }
@@ -242,20 +251,20 @@
             peer.on('open', () => {
                 conn = peer.connect(roomCode);
                 setupConnection();
-                document.getElementById('status').innerText = 'Connected, player (X) goes first.';
             });
 
             peer.on('error', (err) => {
-                alert('Could not connect to room. Check the code.');
+                alert('Could not connect to room. Please make sure the room host has created the room first.');
             });
         }
 
         function setupConnection() {
             conn.on('open', () => {
+                document.getElementById('onlineMenu').classList.add('hidden');
+                document.getElementById('gameContainer').classList.remove('hidden');
+                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + roomCodeText + ')';
                 if (!isHost) {
-                    document.getElementById('onlineMenu').classList.add('hidden');
-                    document.getElementById('gameContainer').classList.remove('hidden');
-                    document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + roomCodeText + ')';
+                    document.getElementById('status').innerText = 'Connected! Player (X) goes first.';
                 }
             });
 
