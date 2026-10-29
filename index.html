@@ -161,6 +161,8 @@
         let isGameActive = true;
         let scoreX = 0;
         let scoreO = 0;
+        let movesX = []; // تخزين مصفوفة حركات X (حد أقصى 3)
+        let movesO = []; // تخزين مصفوفة حركات O (حد أقصى 3)
         let history = [];
 
         const winningConditions = [
@@ -179,20 +181,40 @@
         });
 
         function handleCellClick(e) {
-            const index = e.target.dataset.index;
+            const index = parseInt(e.target.dataset.index);
 
-            // منع النقر إذا الخلية ممتلئة أو اللعبة متوقفة (انتهت بفوز أو تعادل)
             if (board[index] !== '' || !isGameActive) return;
 
+            // حفظ حالة التراجع (Undo)
             history.push({
                 board: [...board],
                 currentPlayer: currentPlayer,
                 isGameActive: isGameActive,
                 scoreX: scoreX,
                 scoreO: scoreO,
+                movesX: [...movesX],
+                movesO: [...movesO],
                 turnText: turnIndicator.textContent
             });
 
+            // إذا كان لدى اللاعب 3 حركات بالفعل، نحذف أقدم حركة له قبل وضع الحركة الجديدة
+            if (currentPlayer === 'X') {
+                if (movesX.length === 3) {
+                    let oldestIndex = movesX.shift();
+                    board[oldestIndex] = '';
+                    cells[oldestIndex].textContent = '';
+                }
+                movesX.push(index);
+            } else {
+                if (movesO.length === 3) {
+                    let oldestIndex = movesO.shift();
+                    board[oldestIndex] = '';
+                    cells[oldestIndex].textContent = '';
+                }
+                movesO.push(index);
+            }
+
+            // وضع الحركة الجديدة
             board[index] = currentPlayer;
             e.target.textContent = currentPlayer;
 
@@ -217,7 +239,7 @@
             }
 
             if (roundWon) {
-                isGameActive = false; // إيقاف اللعبة لمنع أي نقرات إضافية
+                isGameActive = false;
                 if (currentPlayer === 'X') {
                     scoreX++;
                     scoreXEl.textContent = scoreX;
@@ -234,12 +256,7 @@
                 return;
             }
 
-            if (!board.includes('')) {
-                isGameActive = false; // إيقاف اللعبة عند التعادل
-                turnIndicator.textContent = "Draw!";
-                return;
-            }
-
+            // تبديل الدور
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
             turnIndicator.textContent = currentPlayer === 'X' ? "Player One's Turn (X)" : "Player Two's Turn (O)";
         }
@@ -253,6 +270,8 @@
             isGameActive = previousState.isGameActive;
             scoreX = previousState.scoreX;
             scoreO = previousState.scoreO;
+            movesX = previousState.movesX;
+            movesO = previousState.movesO;
 
             scoreXEl.textContent = scoreX;
             scoreOEl.textContent = scoreO;
@@ -268,8 +287,9 @@
         function resetBoard() {
             board = ['', '', '', '', '', '', '', '', ''];
             isGameActive = true;
+            movesX = [];
+            movesO = [];
             
-            // تبديل دور البداية تلقائياً بالتتالي بين X و O
             startingPlayer = startingPlayer === 'X' ? 'O' : 'X';
             currentPlayer = startingPlayer;
             
