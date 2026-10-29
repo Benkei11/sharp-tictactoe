@@ -101,44 +101,44 @@
     <h1>Sharp XO</h1>
 
     <div id="mainMenu" class="menu">
-        <button id="btnOnlineMenu">Online multiplayer</button>
-        <button id="btnLocalGame">Offline multiplayer</button>
+        <button onclick="showOnlineMenu()">Online multiplayer</button>
+        <button onclick="startLocalGame()">Offline multiplayer</button>
     </div>
 
     <div id="onlineMenu" class="online-menu hidden">
         <div style="display: flex; gap: 10px;">
             <input type="text" id="customRoomInput" placeholder="Enter custom room code">
-            <button id="btnCreateRoom">Create room</button>
+            <button onclick="createCustomGame()">Create room</button>
         </div>
         <div style="margin-top: 10px; display: flex; gap: 10px;">
             <input type="text" id="roomCodeInput" placeholder="Enter room code to join">
-            <button id="btnJoinRoom">Join room</button>
+            <button onclick="joinGame()">Join room</button>
         </div>
-        <button class="small-btn" id="btnBackMain" style="margin-top: 10px;">Back</button>
+        <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
 
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
         <div id="status">Connecting...</div>
         <div class="board" id="board">
-            <div class="cell" data-index="0"></div>
-            <div class="cell" data-index="1"></div>
-            <div class="cell" data-index="2"></div>
-            <div class="cell" data-index="3"></div>
-            <div class="cell" data-index="4"></div>
-            <div class="cell" data-index="5"></div>
-            <div class="cell" data-index="6"></div>
-            <div class="cell" data-index="7"></div>
-            <div class="cell" data-index="8"></div>
+            <div class="cell" onclick="makeMove(0)"></div>
+            <div class="cell" onclick="makeMove(1)"></div>
+            <div class="cell" onclick="makeMove(2)"></div>
+            <div class="cell" onclick="makeMove(3)"></div>
+            <div class="cell" onclick="makeMove(4)"></div>
+            <div class="cell" onclick="makeMove(5)"></div>
+            <div class="cell" onclick="makeMove(6)"></div>
+            <div class="cell" onclick="makeMove(7)"></div>
+            <div class="cell" onclick="makeMove(8)"></div>
         </div>
         
         <div id="roomInfo" style="margin-top: 10px; font-size: 14px; color: #888; text-align: center;"></div>
         
         <div class="action-btns">
-            <button id="copyBtn" class="small-btn hidden">Copy code</button>
-            <button class="small-btn" id="btnUndo">Undo</button>
-            <button class="small-btn" id="btnReset">Reset game</button>
-            <button class="small-btn" id="btnBackMenu">Back to menu</button>
+            <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
+            <button class="small-btn" onclick="undoMove()">Undo</button>
+            <button class="small-btn" onclick="resetGame()">Reset game</button>
+            <button class="small-btn" onclick="backToMenu()">Back to menu</button>
         </div>
     </div>
 
@@ -164,25 +164,6 @@
         let gameOver = false;
         let winningPattern = [];
         let startingPlayer = 'X';
-
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("btnOnlineMenu").addEventListener("click", showOnlineMenu);
-            document.getElementById("btnLocalGame").addEventListener("click", startLocalGame);
-            document.getElementById("btnCreateRoom").addEventListener("click", createCustomGame);
-            document.getElementById("btnJoinRoom").addEventListener("click", joinGame);
-            document.getElementById("btnBackMain").addEventListener("click", backToMain);
-            document.getElementById("copyBtn").addEventListener("click", copyRoomCode);
-            document.getElementById("btnUndo").addEventListener("click", undoMove);
-            document.getElementById("btnReset").addEventListener("click", resetGame);
-            document.getElementById("btnBackMenu").addEventListener("click", backToMenu);
-
-            document.querySelectorAll(".cell").forEach(cell => {
-                cell.addEventListener("click", (e) => {
-                    const idx = parseInt(e.target.getAttribute("data-index"));
-                    makeMove(idx);
-                });
-            });
-        });
 
         function showOnlineMenu() {
             document.getElementById('mainMenu').classList.add('hidden');
@@ -220,8 +201,7 @@
             const customCode = inputField.value.trim();
             
             if (!customCode) {
-                alert('Please enter a room code first.');
-                inputField.focus();
+                alert('Please enter a room code.');
                 return;
             }
 
@@ -232,7 +212,7 @@
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
                 if (data && data.players && Object.keys(data.players).length > 0) {
-                    alert('This code is already in use by active players. Please choose another code.');
+                    alert('This code is already in use by active players. Choose another code.');
                     return;
                 }
 
@@ -249,7 +229,6 @@
             
             if (!roomCode) {
                 alert('Please enter a room code to join.');
-                inputField.focus();
                 return;
             }
 
@@ -259,7 +238,7 @@
 
             roomRef.once('value').then((snapshot) => {
                 if (!snapshot.exists()) {
-                    alert('Room does not exist. Please check the code.');
+                    alert('Room does not exist. Check the code.');
                     return;
                 }
 
@@ -267,7 +246,7 @@
                 const activePlayersCount = data.players ? Object.keys(data.players).length : 0;
 
                 if (activePlayersCount >= 2) {
-                    alert('Room is full (2 players already inside). Cannot join.');
+                    alert('Room is full (2 players inside). Cannot join.');
                     return;
                 }
 
@@ -338,7 +317,7 @@
                         roomRef.update({ emptySince: Date.now() });
                     } else if (Date.now() - data.emptySince > 180000) {
                         roomRef.remove();
-                        alert('Room expired and code unlinked due to 3 minutes of inactivity.');
+                        alert('Room expired and code unlinked due to inactivity.');
                         window.location.reload();
                         return;
                     }
