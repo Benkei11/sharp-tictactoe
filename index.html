@@ -1,184 +1,140 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Sharp XO">
-    <title>Sharp Tic Tac Toe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sharp XO Game Edition</title>
     <style>
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+            font-family: Arial, sans-serif;
         }
-
         body {
-            background-color: #000000;
-            color: #ffffff;
+            background-color: #000;
+            color: #fff;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
             min-height: 100vh;
-            padding: 20px 15px;
-            user-select: none;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 380px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            margin: auto;
-        }
-
-        h1 {
-            font-size: 22px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            border-bottom: 2px solid #ffffff;
-            padding-bottom: 4px;
-        }
-
-        .score-board {
-            display: flex;
-            width: 100%;
-            justify-content: space-between;
-            border: 2px solid #ffffff;
+            margin: 0;
             padding: 10px;
-            background-color: #000000;
         }
-
-        .player-box {
-            text-align: center;
-            flex: 1;
-            padding: 5px 0;
-            transition: all 0.2s;
+        h1 {
+            letter-spacing: 2px;
+            margin: 15px 0;
+            border-bottom: 2px solid #fff;
+            padding-bottom: 5px;
+            font-size: 24px;
         }
-
-        .player-box.active {
-            background-color: #ffffff;
-            color: #000000;
-        }
-
-        .player-name {
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        .score {
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        .status-msg {
-            height: 35px;
-            font-size: 15px;
-            font-weight: bold;
-            text-align: center;
-            letter-spacing: 1px;
-            color: #ffffff;
-            border: 1px solid #ffffff;
-            width: 100%;
+        .scoreboard {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #111111;
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 15px;
+            border: 2px solid #fff;
         }
-
+        .player-box {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: #000;
+            color: #fff;
+        }
+        .player-box:first-child {
+            border-left: 2px solid #fff;
+        }
+        .player-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .player-score {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .turn-indicator {
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
         .board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 4px;
+            gap: 0;
             width: 100%;
-            aspect-ratio: 1;
-            background-color: #ffffff;
-            border: 3px solid #ffffff;
+            max-width: 350px;
+            border: 2px solid #fff;
+            margin-bottom: 15px;
         }
-
         .cell {
-            background-color: #000000;
+            aspect-ratio: 1;
+            background-color: #000;
+            border: 1px solid #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 48px;
-            font-weight: 900;
+            font-weight: bold;
+            color: #fff;
             cursor: pointer;
-            transition: background-color 0.1s;
+            user-select: none;
         }
-
-        .cell:active {
-            background-color: #222222;
+        /* Winning cells highlight: Pure White background with Black text */
+        .cell.winner {
+            background-color: #fff;
+            color: #000;
         }
-
-        .cell.fading {
-            opacity: 0.3;
-            border: 2px dashed #ffffff;
-        }
-
         .controls {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
+            max-width: 350px;
+            margin-bottom: 10px;
         }
-
-        .btn-group {
-            display: flex;
-            gap: 8px;
-            width: 100%;
-        }
-
-        button {
-            background-color: #000000;
-            color: #ffffff;
-            border: 2px solid #ffffff;
-            padding: 12px;
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            cursor: pointer;
+        button.btn {
             flex: 1;
-            border-radius: 0px;
+            padding: 12px;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
         }
-
-        button:active {
-            background-color: #ffffff;
-            color: #000000;
+        button.btn:active {
+            background-color: #fff;
+            color: #000;
         }
-
-        button:disabled {
-            border-color: #333333;
-            color: #333333;
-            background-color: #000000;
+        .reset-score-btn {
+            width: 100%;
+            max-width: 350px;
+            padding: 12px;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Tic Tac Toe</h1>
+    <h1>TIC TAC TOE</h1>
 
-    <div class="score-board">
-        <div class="player-box" id="p1-box">
-            <div class="player-name">PLAYER ONE (X)</div>
-            <div class="score" id="score-x">0</div>
+    <div class="scoreboard">
+        <div class="player-box">
+            <div class="player-title">PLAYER TWO (O)</div>
+            <div class="player-score" id="scoreO">0</div>
         </div>
-        <div style="border-left: 2px solid #fff; margin: 0 8px;"></div>
-        <div class="player-box" id="p2-box">
-            <div class="player-name">PLAYER TWO (O)</div>
-            <div class="score" id="score-o">0</div>
+        <div class="player-box">
+            <div class="player-title">PLAYER ONE (X)</div>
+            <div class="player-score" id="scoreX">0</div>
         </div>
     </div>
 
-    <div class="status-msg" id="status">دور Player One</div>
+    <div class="turn-indicator" id="turnIndicator">Player One's Turn (X)</div>
 
     <div class="board" id="board">
         <div class="cell" data-index="0"></div>
@@ -193,163 +149,139 @@
     </div>
 
     <div class="controls">
-        <div class="btn-group">
-            <button id="undo-btn">تراجع (Undo)</button>
-            <button id="clear-btn">مسح البورد</button>
-        </div>
-        <button id="reset-score-btn">تصفير النتيجة</button>
+        <button class="btn" onclick="resetBoard()">Clear Board</button>
+        <button class="btn" onclick="undoMove()">Undo</button>
     </div>
-</div>
+    <button class="reset-score-btn" onclick="resetScore()">Reset Score</button>
 
-<script>
-    let boardState = Array(9).fill('');
-    let currentPlayer = 'X';
-    let xMoves = [];
-    let oMoves = [];
-    let history = [];
-    let scoreX = 0;
-    let scoreO = 0;
-    let isGameOver = false;
+    <script>
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let isGameActive = true;
+        let scoreX = 0;
+        let scoreO = 0;
+        let history = [];
 
-    const cells = document.querySelectorAll('.cell');
-    const statusText = document.getElementById('status');
-    const scoreXElem = document.getElementById('score-x');
-    const scoreOElem = document.getElementById('score-o');
-    const p1Box = document.getElementById('p1-box');
-    const p2Box = document.getElementById('p2-box');
-    const undoBtn = document.getElementById('undo-btn');
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
 
-    const winPatterns = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],
-        [0, 4, 8], [2, 4, 6]
-    ];
+        const cells = document.querySelectorAll('.cell');
+        const turnIndicator = document.getElementById('turnIndicator');
+        const scoreXEl = document.getElementById('scoreX');
+        const scoreOEl = document.getElementById('scoreO');
 
-    function initGame() {
-        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
-        document.getElementById('clear-btn').addEventListener('click', clearBoard);
-        document.getElementById('reset-score-btn').addEventListener('click', resetScores);
-        undoBtn.addEventListener('click', undoLastMove);
-        updateUI();
-    }
+        cells.forEach(cell => {
+            cell.addEventListener('click', handleCellClick);
+        });
 
-    function handleCellClick(e) {
-        const index = parseInt(e.target.dataset.index);
+        function handleCellClick(e) {
+            const index = e.target.dataset.index;
 
-        if (boardState[index] !== '' || isGameOver) return;
+            if (board[index] !== '' || !isGameActive) return;
 
-        saveHistory();
+            history.push({
+                board: [...board],
+                currentPlayer: currentPlayer,
+                isGameActive: isGameActive,
+                scoreX: scoreX,
+                scoreO: scoreO,
+                turnText: turnIndicator.textContent
+            });
 
-        const currentMoves = currentPlayer === 'X' ? xMoves : oMoves;
+            board[index] = currentPlayer;
+            e.target.textContent = currentPlayer;
 
-        if (currentMoves.length === 3) {
-            const removedIndex = currentMoves.shift();
-            boardState[removedIndex] = '';
+            checkResult();
         }
 
-        boardState[index] = currentPlayer;
-        currentMoves.push(index);
+        function checkResult() {
+            let roundWon = false;
+            let winningCombination = [];
 
-        if (checkWin()) {
-            isGameOver = true;
-            if (currentPlayer === 'X') {
-                scoreX++;
-                statusText.innerText = '🎉 فاز PLAYER ONE!';
-            } else {
-                scoreO++;
-                statusText.innerText = '🎉 فاز PLAYER TWO!';
+            for (let condition of winningConditions) {
+                let a = board[condition[0]];
+                let b = board[condition[1]];
+                let c = board[condition[2]];
+
+                if (a === '' || b === '' || c === '') continue;
+                if (a === b && b === c) {
+                    roundWon = true;
+                    winningCombination = condition;
+                    break;
+                }
             }
-            updateScores();
-        } else {
+
+            if (roundWon) {
+                isGameActive = false;
+                if (currentPlayer === 'X') {
+                    scoreX++;
+                    scoreXEl.textContent = scoreX;
+                    turnIndicator.textContent = "Player One (X) Wins!";
+                } else {
+                    scoreO++;
+                    scoreOEl.textContent = scoreO;
+                    turnIndicator.textContent = "Player Two (O) Wins!";
+                }
+
+                winningCombination.forEach(index => {
+                    cells[index].classList.add('winner');
+                });
+                return;
+            }
+
+            if (!board.includes('')) {
+                isGameActive = false;
+                turnIndicator.textContent = "Draw!";
+                return;
+            }
+
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            statusText.innerText = `دور Player ${currentPlayer === 'X' ? 'One' : 'Two'}`;
+            turnIndicator.textContent = currentPlayer === 'X' ? "Player One's Turn (X)" : "Player Two's Turn (O)";
         }
 
-        updateUI();
-    }
-
-    function checkWin() {
-        return winPatterns.some(pattern => {
-            return pattern.every(index => boardState[index] === currentPlayer);
-        });
-    }
-
-    function saveHistory() {
-        history.push({
-            boardState: [...boardState],
-            xMoves: [...xMoves],
-            oMoves: [...oMoves],
-            currentPlayer: currentPlayer,
-            isGameOver: isGameOver
-        });
-    }
-
-    function undoLastMove() {
+    function undoMove() {
         if (history.length === 0) return;
 
-        const lastState = history.pop();
-        boardState = lastState.boardState;
-        xMoves = lastState.xMoves;
-        oMoves = lastState.oMoves;
-        currentPlayer = lastState.currentPlayer;
-        isGameOver = lastState.isGameOver;
+        let previousState = history.pop();
+        board = previousState.board;
+        currentPlayer = previousState.currentPlayer;
+        isGameActive = previousState.isGameActive;
+        scoreX = previousState.scoreX;
+        scoreO = previousState.scoreO;
 
-        statusText.innerText = `دور Player ${currentPlayer === 'X' ? 'One' : 'Two'}`;
-        updateUI();
-    }
-
-    function clearBoard() {
-        boardState = Array(9).fill('');
-        xMoves = [];
-        oMoves = [];
-        history = [];
-        currentPlayer = 'X';
-        isGameOver = false;
-        statusText.innerText = 'دور Player One';
-        updateUI();
-    }
-
-    function resetScores() {
-        scoreX = 0;
-        scoreO = 0;
-        updateScores();
-        clearBoard();
-    }
-
-    function updateScores() {
-        scoreXElem.innerText = scoreX;
-        scoreOElem.innerText = scoreO;
-    }
-
-    function updateUI() {
-        const xFadeIndex = xMoves.length === 3 ? xMoves[0] : null;
-        const oFadeIndex = oMoves.length === 3 ? oMoves[0] : null;
+        scoreXEl.textContent = scoreX;
+        scoreOEl.textContent = scoreO;
 
         cells.forEach((cell, index) => {
-            cell.innerText = boardState[index];
-            cell.classList.remove('fading');
-
-            if (index === xFadeIndex || index === oFadeIndex) {
-                cell.classList.add('fading');
-            }
+            cell.textContent = board[index];
+            cell.classList.remove('winner');
         });
 
-        if (currentPlayer === 'X' && !isGameOver) {
-            p1Box.classList.add('active');
-            p2Box.classList.remove('active');
-        } else if (currentPlayer === 'O' && !isGameOver) {
-            p2Box.classList.add('active');
-            p1Box.classList.remove('active');
-        } else {
-            p1Box.classList.remove('active');
-            p2Box.classList.remove('active');
-        }
-
-        undoBtn.disabled = history.length === 0;
+        turnIndicator.textContent = previousState.turnText;
     }
 
-    initGame();
-</script>
+        function resetBoard() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            isGameActive = true;
+            currentPlayer = 'X';
+            history = [];
+            turnIndicator.textContent = "Player One's Turn (X)";
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('winner');
+            });
+        }
 
+        function resetScore() {
+            scoreX = 0;
+            scoreO = 0;
+            scoreXEl.textContent = '0';
+            scoreOEl.textContent = '0';
+            resetBoard();
+        }
+    </script>
 </body>
 </html>
