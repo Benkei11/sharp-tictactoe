@@ -199,7 +199,15 @@
             }
 
             roomCodeText = customCode;
-            peer = new Peer(roomCodeText, { debug: 1 });
+            
+            // Explicitly configuring PeerJS with reliable public server settings
+            peer = new Peer(roomCodeText, {
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true,
+                debug: 1
+            });
+
             isHost = true;
             mySymbol = 'X';
             scores = { 'X': 0, 'O': 0 };
@@ -212,14 +220,14 @@
                 document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + id + ')';
                 document.getElementById('copyBtn').classList.remove('hidden');
                 
-                // Start 3-minute empty room timer if no one is connected
                 startEmptyRoomTimer();
             });
 
             peer.on('error', (err) => {
                 if (err.type === 'unavailable-id') {
-                    // Reclaim room if it exists from previous session
-                    peer = new Peer();
+                    alert('Room code is already registered. Trying to take over or connect...');
+                    // If room exists on server, connect to it as host/peer handler
+                    peer = new Peer({ host: '0.peerjs.com', port: 443, secure: true });
                     peer.on('open', () => {
                         conn = peer.connect(customCode);
                         setupConnection();
@@ -234,7 +242,7 @@
 
             peer.on('connection', (connection) => {
                 conn = connection;
-                clearEmptyRoomTimer(); // Reset/Clear timeout since a player joined
+                clearEmptyRoomTimer();
                 setupConnection();
                 document.getElementById('status').innerText = 'Player joined, your turn (X)';
             });
@@ -252,19 +260,23 @@
             }
 
             roomCodeText = roomCode;
-            peer = new Peer();
+            peer = new Peer({
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true
+            });
             isHost = false;
             mySymbol = 'O';
             scores = { 'X': 0, 'O': 0 };
             startingPlayer = 'X';
 
             peer.on('open', () => {
-                conn = peer.connect(roomCode);
+                conn = peer.connect(roomCode, { reliable: true });
                 setupConnection();
             });
 
             peer.on('error', (err) => {
-                alert('Could not connect to room. Make sure the room exists.');
+                alert('Could not connect to room. Make sure the room creator has opened the room.');
             });
         }
 
@@ -289,7 +301,7 @@
             });
 
             conn.on('close', () => {
-                document.getElementById('status').innerText = 'Opponent left. Room active for 3 mins.';
+                document.getElementById('status').innerText = 'Opponent disconnected. Room remains open.';
                 if (isHost) {
                     startEmptyRoomTimer();
                 }
@@ -298,13 +310,11 @@
 
         function startEmptyRoomTimer() {
             clearEmptyRoomTimer();
-            // 3 minutes = 180,000 milliseconds
+            // 3 minutes timeout if completely empty
             emptyRoomTimer = setTimeout(() => {
                 if (peer) {
                     peer.destroy();
                 }
-                alert('Room expired due to inactivity.');
-                window.location.reload();
             }, 180000);
         }
 
