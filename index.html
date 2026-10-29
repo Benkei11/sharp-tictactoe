@@ -108,11 +108,11 @@
     <div id="onlineMenu" class="online-menu hidden">
         <div style="display: flex; gap: 10px;">
             <input type="text" id="customRoomInput" placeholder="Enter custom room code">
-            <button onclick="createCustomGame()">Create room</button>
+            <button type="button" onclick="createCustomGame()">Create room</button>
         </div>
         <div style="margin-top: 10px; display: flex; gap: 10px;">
             <input type="text" id="roomCodeInput" placeholder="Enter room code to join">
-            <button onclick="joinGame()">Join room</button>
+            <button type="button" onclick="joinGame()">Join room</button>
         </div>
         <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
@@ -195,40 +195,50 @@
         }
 
         function createCustomGame() {
-            const customCode = document.getElementById('customRoomInput').value.trim();
+            const inputField = document.getElementById('customRoomInput');
+            const customCode = inputField.value.trim();
+            
             if (!customCode) {
-                alert('Please enter a custom room code');
+                alert('الرجاء إدخال كود الغرفة أولاً!');
+                inputField.focus();
                 return;
             }
 
             currentRoomId = customCode;
+            isOnlineMode = true;
             roomRef = db.ref('rooms/' + currentRoomId);
 
             roomRef.once('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data && data.players && Object.keys(data.players).length > 0) {
-                    alert('هذا الكود مستخدم حالياً وفيه لاعبين! يرجى اختيار كود آخر.');
+                    alert('هذا الكود مستخدم حالياً وفيه لاعبين نشطين! يرجى اختيار كود آخر.');
                     return;
                 }
 
                 mySymbol = 'X';
                 enterRoomAsPlayer();
+            }).catch((error) => {
+                alert('حدث خطأ في الاتصال بقاعدة البيانات: ' + error.message);
             });
         }
 
         function joinGame() {
-            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            const inputField = document.getElementById('roomCodeInput');
+            const roomCode = inputField.value.trim();
+            
             if (!roomCode) {
-                alert('Please enter a room code to join');
+                alert('الرجاء إدخال كود الغرفة للانضمام!');
+                inputField.focus();
                 return;
             }
 
             currentRoomId = roomCode;
+            isOnlineMode = true;
             roomRef = db.ref('rooms/' + currentRoomId);
 
             roomRef.once('value', (snapshot) => {
                 if (!snapshot.exists()) {
-                    alert('Room does not exist. Please check the code.');
+                    alert('الغرفة غير موجودة. تأكد من الكود أو أن المضيف أنشأها.');
                     return;
                 }
 
@@ -247,6 +257,8 @@
                 }
 
                 enterRoomAsPlayer();
+            }).catch((error) => {
+                alert('حدث خطأ في الاتصال بقاعدة البيانات: ' + error.message);
             });
         }
 
@@ -304,7 +316,6 @@
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
                     } else if (Date.now() - data.emptySince > 180000) {
-                        // عند انقضاء 3 دقائق: يتم مسح الغرفة تماماً وحل الكود
                         roomRef.remove();
                         alert('انتهت صلاحية الغرفة وتم تفكيك الكود لخلوها لمدة 3 دقائق.');
                         window.location.reload();
