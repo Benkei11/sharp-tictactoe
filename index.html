@@ -201,6 +201,7 @@
             updateUI();
         }
 
+        // فحص ذكي يسمح بإنشاء الغرفة أو تجاوزها إذا كانت فارغة تماماً
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -217,8 +218,11 @@
             roomRef.once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    if (data && (data.boardState || (data.players && Object.keys(data.players).length > 0))) {
-                        alert('This code is already in use.');
+                    const playersCount = data.players ? Object.keys(data.players).length : 0;
+                    
+                    // إذا كان هناك لاعبون متواجدون بالفعل، نرفض الكود
+                    if (playersCount > 0) {
+                        alert('This code is already in use by active players.');
                         return;
                     }
                 }
@@ -320,7 +324,6 @@
                 const playersObj = data.players || {};
                 const playersCount = Object.keys(playersObj).length;
 
-                // نظام الـ 3 دقائق لحذف الغرفة عند خلوها
                 if (playersCount === 0) {
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
