@@ -95,7 +95,6 @@
             font-size: 12px;
             padding: 5px 10px;
         }
-        /* Chat Container */
         .chat-box {
             width: 260px;
             border: 1px solid #fff;
@@ -224,7 +223,6 @@
 
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
-        let playerMoves = { 'X': [], 'O': [] };
         let scores = { 'X': 0, 'O': 0 };
         let gameOver = false;
         let winningPattern = [];
@@ -249,7 +247,6 @@
             startingPlayer = 'X';
             currentTurn = 'X';
             boardState = ["", "", "", "", "", "", "", "", ""];
-            playerMoves = { 'X': [], 'O': [] };
             gameOver = false;
             winningPattern = [];
 
@@ -334,7 +331,6 @@
                         boardState: ["", "", "", "", "", "", "", "", ""],
                         currentTurn: 'X',
                         scores: { 'X': 0, 'O': 0 },
-                        playerMoves: { 'X': [], 'O': [] },
                         gameOver: false,
                         winningPattern: [],
                         startingPlayer: 'X',
@@ -414,10 +410,6 @@
                 boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
                 currentTurn = data.currentTurn || 'X';
                 scores = data.scores || { 'X': 0, 'O': 0 };
-                playerMoves = data.playerMoves || { 'X': [], 'O': [] };
-                if (!playerMoves['X']) playerMoves['X'] = [];
-                if (!playerMoves['O']) playerMoves['O'] = [];
-
                 gameOver = data.gameOver || false;
                 winningPattern = data.winningPattern || [];
                 startingPlayer = data.startingPlayer || 'X';
@@ -435,19 +427,7 @@
             }
 
             let symbol = currentTurn;
-            let removedIndex = null;
-            
-            if (!playerMoves[symbol]) {
-                playerMoves[symbol] = [];
-            }
-
-            if (playerMoves[symbol].length >= 4) {
-                removedIndex = playerMoves[symbol].shift();
-                boardState[removedIndex] = "";
-            }
-
             boardState[index] = symbol;
-            playerMoves[symbol].push(index);
 
             currentTurn = (symbol === 'X') ? 'O' : 'X';
 
@@ -459,7 +439,6 @@
                     boardState: boardState,
                     currentTurn: currentTurn,
                     scores: scores,
-                    playerMoves: playerMoves,
                     gameOver: gameOver,
                     winningPattern: winningPattern,
                     startingPlayer: startingPlayer
@@ -510,6 +489,12 @@
                     gameOver = true;
                     return;
                 }
+            }
+
+            // فحص التعادل إذا كانت اللوحة ممتلئة ولا يوجد فائز
+            if (!boardState.includes("")) {
+                document.getElementById('status').innerText = `It's a draw!`;
+                gameOver = true;
             }
         }
 
@@ -563,7 +548,6 @@
 
         function resetGame() {
             boardState = ["", "", "", "", "", "", "", "", ""];
-            playerMoves = { 'X': [], 'O': [] };
             startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
             currentTurn = startingPlayer;
             gameOver = false;
@@ -575,7 +559,6 @@
                     boardState: boardState,
                     currentTurn: currentTurn,
                     scores: scores,
-                    playerMoves: playerMoves,
                     gameOver: gameOver,
                     winningPattern: winningPattern,
                     startingPlayer: startingPlayer
