@@ -415,7 +415,7 @@
                 if (players.playerX) activePlayersCount++;
                 if (players.playerO) activePlayersCount++;
 
-                const specKeys = Object.keys(specs);
+                const specKeys = specs ? Object.keys(specs) : [];
                 let mySpecLabel = '';
                 if (myRole === 'Spectator') {
                     const index = specKeys.indexOf(mySessionId);
@@ -598,7 +598,7 @@
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val() || {};
                 const players = data.players || {};
-                const specKeys = Object.keys(data.spectators || {});
+                const specKeys = data.spectators ? Object.keys(data.spectators) : [];
                 let senderLabel = '';
 
                 if (players.playerX === mySessionId) {
