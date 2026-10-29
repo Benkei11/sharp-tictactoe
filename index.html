@@ -201,7 +201,7 @@
             updateUI();
         }
 
-        // منع زر الإنشاء من الدخول إذا كانت الغرفة موجودة
+        // زر الإنشاء: يرفض ويخبرك أن الكود مستخدم إذا كانت الغرفة موجودة بنشاط
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -229,7 +229,7 @@
             });
         }
 
-        // مخصص للانضمام للغرف القائمة فقط
+        // زر الانضمام: مخصص للدخول للغرف القائمة فقط
         function joinGame() {
             const inputField = document.getElementById('roomCodeInput');
             const roomCode = inputField.value.trim();
@@ -338,7 +338,12 @@
                 boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
                 currentTurn = data.currentTurn || 'X';
                 scores = data.scores || { 'X': 0, 'O': 0 };
+                
+                // التأكد تماماً من تهيئة playerMoves و moveHistory لتجنب أي خطأ
                 playerMoves = data.playerMoves || { 'X': [], 'O': [] };
+                if (!playerMoves['X']) playerMoves['X'] = [];
+                if (!playerMoves['O']) playerMoves['O'] = [];
+
                 moveHistory = data.moveHistory || [];
                 gameOver = data.gameOver || false;
                 winningPattern = data.winningPattern || [];
@@ -358,6 +363,11 @@
             let symbol = currentTurn;
             let removedIndex = null;
             
+            // حماية إضافية لضمان وجود المصفوفة قبل استخدام length و shift
+            if (!playerMoves[symbol]) {
+                playerMoves[symbol] = [];
+            }
+
             if (playerMoves[symbol].length >= 4) {
                 removedIndex = playerMoves[symbol].shift();
                 boardState[removedIndex] = "";
@@ -404,10 +414,13 @@
 
             let lastMove = moveHistory.pop();
             boardState[lastMove.index] = "";
-            playerMoves[lastMove.symbol].pop();
+            if (playerMoves[lastMove.symbol]) {
+                playerMoves[lastMove.symbol].pop();
+            }
 
             if (lastMove.removedIndex !== null) {
                 boardState[lastMove.removedIndex] = lastMove.symbol;
+                if (!playerMoves[lastMove.symbol]) playerMoves[lastMove.symbol] = [];
                 playerMoves[lastMove.symbol].unshift(lastMove.removedIndex);
             }
 
