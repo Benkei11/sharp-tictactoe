@@ -159,6 +159,7 @@
         let mySymbol = 'X';
         let isOnlineMode = false;
         let roomRef = null;
+        let clientId = 'client_' + Math.random().toString(36).substring(2, 9);
 
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
@@ -200,6 +201,7 @@
             updateUI();
         }
 
+        // زر الإنشاء: يرفض تماماً إذا كانت الغرفة موجودة ولا يسمح بالدخول عبره
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -215,21 +217,19 @@
 
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
-                if (data && data.players) {
-                    const activeCount = Object.keys(data.players).length;
-                    if (activeCount > 0) {
-                        alert('This code is already in use.');
-                        return;
-                    }
+                if (data && data.boardState) {
+                    alert('This code is already in use.');
+                    return;
                 }
 
                 mySymbol = 'X';
-                enterRoomAsPlayer();
+                setupRoomAndEnter();
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
+        // زر الانضمام: مخصص فقط للدخول للغرف الموجودة
         function joinGame() {
             const inputField = document.getElementById('roomCodeInput');
             const roomCode = inputField.value.trim();
@@ -244,16 +244,16 @@
             roomRef = db.ref('rooms/' + currentRoomId);
 
             roomRef.once('value').then((snapshot) => {
-                if (!snapshot.exists()) {
+                if (!snapshot.exists() || !snapshot.val().boardState) {
                     alert('Room does not exist. Check the code.');
                     return;
                 }
 
                 const data = snapshot.val();
                 const playersObj = data.players || {};
-                const activePlayersCount = Object.keys(playersObj).length;
+                const activeCount = Object.keys(playersObj).length;
 
-                if (activePlayersCount >= 2) {
+                if (activeCount >= 2) {
                     alert('Room is full (2 players inside). Cannot join.');
                     return;
                 }
@@ -267,13 +267,13 @@
                     return;
                 }
 
-                enterRoomAsPlayer();
+                setupRoomAndEnter();
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
-        function enterRoomAsPlayer() {
+        function setupRoomAndEnter() {
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
@@ -295,9 +295,9 @@
                 }
                 
                 const playerKey = 'player' + mySymbol;
-                const playerRef = roomRef.child('players/' + playerKey);
-                playerRef.set(true);
-                playerRef.onDisconnect().remove();
+                const playerConnRef = roomRef.child('players/' + playerKey);
+                playerConnRef.set(clientId);
+                playerConnRef.onDisconnect().remove();
 
                 attachRoomListener();
             });
