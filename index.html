@@ -69,6 +69,11 @@
         .cell:hover {
             background: #111;
         }
+        /* Winning cells highlighted in white */
+        .cell.win {
+            background: #fff !important;
+            color: #000 !important;
+        }
         #status {
             margin-top: 10px;
             font-size: 18px;
@@ -152,6 +157,7 @@
         let moveHistory = [];
         let scores = { 'X': 0, 'O': 0 };
         let gameOver = false;
+        let winningPattern = [];
         let roomCodeText = '';
         let startingPlayer = 'X';
 
@@ -175,7 +181,7 @@
             currentTurn = 'X';
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerText = '';
+            document.getElementById('roomInfo.innerText = ''');
             document.getElementById('copyBtn').classList.add('hidden');
             updateUI();
         }
@@ -318,11 +324,19 @@
         }
 
         function undoMove() {
-            if (gameOver || moveHistory.length === 0) return;
+            if (moveHistory.length === 0) return;
 
             if (isOnlineMode) {
                 let lastMove = moveHistory[moveHistory.length - 1];
                 if (lastMove.symbol !== mySymbol) return;
+            }
+
+            // If game was over, undoing should revert the win state and score increment
+            if (gameOver) {
+                let lastWinner = boardState[winningPattern[0]];
+                if (scores[lastWinner] > 0) scores[lastWinner]--;
+                gameOver = false;
+                winningPattern = [];
             }
 
             undoMoveLocally(true);
@@ -336,7 +350,10 @@
             if (moveHistory.length === 0) return;
 
             if (gameOver) {
+                let lastWinner = boardState[winningPattern[0]];
+                if (scores[lastWinner] > 0) scores[lastWinner]--;
                 gameOver = false;
+                winningPattern = [];
             }
 
             let lastMove = moveHistory.pop();
@@ -356,6 +373,10 @@
             const cells = document.querySelectorAll('.cell');
             cells.forEach((cell, i) => {
                 cell.innerText = boardState[i];
+                cell.classList.remove('win');
+                if (winningPattern.includes(i)) {
+                    cell.classList.add('win');
+                }
             });
 
             document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
@@ -385,26 +406,14 @@
                 if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
                     let winner = boardState[a];
                     scores[winner]++;
+                    winningPattern = [a, b, c];
                     document.getElementById('status').innerText = 'Winner is player ' + winner + '!';
                     document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
                     gameOver = true;
-
-                    setTimeout(() => {
-                        startNextRound();
-                    }, 1500);
+                    updateUI();
                     return;
                 }
             }
-        }
-
-        function startNextRound() {
-            boardState = ["", "", "", "", "", "", "", "", ""];
-            playerMoves = { 'X': [], 'O': [] };
-            moveHistory = [];
-            gameOver = false;
-            startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
-            currentTurn = startingPlayer;
-            updateUI();
         }
 
         function copyRoomCode() {
@@ -433,6 +442,7 @@
             currentTurn = 'X';
             startingPlayer = 'X';
             gameOver = false;
+            winningPattern = [];
             if (fullReset) {
                 scores = { 'X': 0, 'O': 0 };
             }
