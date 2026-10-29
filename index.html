@@ -156,6 +156,7 @@
 
     <script>
         let board = ['', '', '', '', '', '', '', '', ''];
+        let startingPlayer = 'X';
         let currentPlayer = 'X';
         let isGameActive = true;
         let scoreX = 0;
@@ -180,6 +181,7 @@
         function handleCellClick(e) {
             const index = e.target.dataset.index;
 
+            // منع النقر إذا الخلية ممتلئة أو اللعبة متوقفة (انتهت بفوز أو تعادل)
             if (board[index] !== '' || !isGameActive) return;
 
             history.push({
@@ -215,7 +217,7 @@
             }
 
             if (roundWon) {
-                isGameActive = false;
+                isGameActive = false; // إيقاف اللعبة لمنع أي نقرات إضافية
                 if (currentPlayer === 'X') {
                     scoreX++;
                     scoreXEl.textContent = scoreX;
@@ -233,7 +235,7 @@
             }
 
             if (!board.includes('')) {
-                isGameActive = false;
+                isGameActive = false; // إيقاف اللعبة عند التعادل
                 turnIndicator.textContent = "Draw!";
                 return;
             }
@@ -242,33 +244,37 @@
             turnIndicator.textContent = currentPlayer === 'X' ? "Player One's Turn (X)" : "Player Two's Turn (O)";
         }
 
-    function undoMove() {
-        if (history.length === 0) return;
+        function undoMove() {
+            if (history.length === 0) return;
 
-        let previousState = history.pop();
-        board = previousState.board;
-        currentPlayer = previousState.currentPlayer;
-        isGameActive = previousState.isGameActive;
-        scoreX = previousState.scoreX;
-        scoreO = previousState.scoreO;
+            let previousState = history.pop();
+            board = previousState.board;
+            currentPlayer = previousState.currentPlayer;
+            isGameActive = previousState.isGameActive;
+            scoreX = previousState.scoreX;
+            scoreO = previousState.scoreO;
 
-        scoreXEl.textContent = scoreX;
-        scoreOEl.textContent = scoreO;
+            scoreXEl.textContent = scoreX;
+            scoreOEl.textContent = scoreO;
 
-        cells.forEach((cell, index) => {
-            cell.textContent = board[index];
-            cell.classList.remove('winner');
-        });
+            cells.forEach((cell, index) => {
+                cell.textContent = board[index];
+                cell.classList.remove('winner');
+            });
 
-        turnIndicator.textContent = previousState.turnText;
-    }
+            turnIndicator.textContent = previousState.turnText;
+        }
 
         function resetBoard() {
             board = ['', '', '', '', '', '', '', '', ''];
             isGameActive = true;
-            currentPlayer = 'X';
+            
+            // تبديل دور البداية تلقائياً بالتتالي بين X و O
+            startingPlayer = startingPlayer === 'X' ? 'O' : 'X';
+            currentPlayer = startingPlayer;
+            
             history = [];
-            turnIndicator.textContent = "Player One's Turn (X)";
+            turnIndicator.textContent = currentPlayer === 'X' ? "Player One's Turn (X)" : "Player Two's Turn (O)";
             cells.forEach(cell => {
                 cell.textContent = '';
                 cell.classList.remove('winner');
@@ -280,6 +286,7 @@
             scoreO = 0;
             scoreXEl.textContent = '0';
             scoreOEl.textContent = '0';
+            startingPlayer = 'X';
             resetBoard();
         }
     </script>
