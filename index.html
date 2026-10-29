@@ -74,7 +74,7 @@
             background: #fff !important;
             color: #000 !important;
         }
-        #status, #spectatorInfo, #roomCounts {
+        #status, #roomCounts {
             margin-top: 4px;
             font-size: 15px;
             text-align: center;
@@ -95,7 +95,7 @@
             font-size: 12px;
             padding: 5px 10px;
         }
-        /* Single Unified Chat Container */
+        /* Chat Container */
         .chat-box {
             width: 260px;
             border: 1px solid #fff;
@@ -166,8 +166,7 @@
     <!-- Game Container -->
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
-        <div id="roomCounts">Players: 0/2 | Viewers: 0</div>
-        <div id="spectatorInfo" class="hidden" style="color: #0ff; font-weight: bold;"></div>
+        <div id="roomCounts">Players: 0/2</div>
         <div id="status">Connecting...</div>
         
         <div class="board" id="board">
@@ -184,7 +183,7 @@
         
         <div id="roomInfo" style="margin-top: 4px; font-size: 12px; color: #888; text-align: center;"></div>
         
-        <!-- Unified Chat System -->
+        <!-- Chat System -->
         <div id="chatBoxContainer" class="chat-box">
             <div class="chat-title">Game chat</div>
             <div id="chatMessages" class="chat-messages"></div>
@@ -213,14 +212,8 @@
         const db = firebase.database();
 
         let currentRoomId = '';
-        let myRole = 'Spectator'; 
-        
-        let mySessionId = localStorage.getItem('xo_session_id');
-        if (!mySessionId) {
-            mySessionId = 'user_' + Math.random().toString(36).substring(2, 10);
-            localStorage.setItem('xo_session_id', mySessionId);
-        }
-
+        let myRole = ''; 
+        let mySessionId = 'user_' + Math.random().toString(36).substring(2, 10);
         let isOnlineMode = false;
         let roomRef = null;
         let userPresenceRef = null;
@@ -263,7 +256,6 @@
             document.getElementById('roomInfo').innerText = '';
             document.getElementById('copyBtn').classList.add('hidden');
             document.getElementById('roomCounts').classList.add('hidden');
-            document.getElementById('spectatorInfo').classList.add('hidden');
             document.getElementById('chatBoxContainer').classList.add('hidden');
             updateUI();
         }
@@ -284,7 +276,7 @@
             roomRef.once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    if (data && (data.players || (data.boardState && data.boardState.some(cell => cell !== "")) || data.scores)) {
+                    if (data && data.players && (data.players.playerX || data.players.playerO)) {
                         alert('Room in use.');
                         return;
                     }
@@ -313,6 +305,14 @@
                     alert('Room not found.');
                     return;
                 }
+                const data = snapshot.val();
+                const players = data.players || {};
+                
+                // تحقق مما إذا كانت الغرفة ممتلئة وليست خاصة بهذا المستخدم
+                if (players.playerX && players.playerO && players.playerX !== mySessionId && players.playerO !== mySessionId) {
+                    alert('Room is full (2/2 players).');
+                    return;
+                }
                 setupRoomAndJoin();
             }).catch((error) => {
                 alert('Connection error.');
@@ -338,49 +338,51 @@
                         gameOver: false,
                         winningPattern: [],
                         startingPlayer: 'X',
-                        players: {},
-                        spectators: {}
+                        players: {}
                     };
                 }
 
                 if (!roomData.players) roomData.players = {};
-                if (!roomData.spectators) roomData.spectators = {};
 
                 if (roomData.players.playerX === mySessionId) {
-                    // مسموح له بالعودة لمقعده
+                    myRole = 'X';
                 } else if (roomData.players.playerO === mySessionId) {
-                    // مسموح له بالعودة لمقعده
+                    myRole = 'O';
                 } else if (!roomData.players.playerX) {
                     roomData.players.playerX = mySessionId;
+                    myRole = 'X';
                 } else if (!roomData.players.playerO) {
                     roomData.players.playerO = mySessionId;
+                    myRole = 'O';
                 } else {
-                    roomData.spectators[mySessionId] = true;
+                    myRole = ''; // الغرفة ممتلئة تماماً
                 }
 
                 return roomData;
             }, (error, committed, snapshot) => {
-                if (error) {
+                if (error || !committed) {
                     alert('Error joining room.');
-                } else {
-                    const data = snapshot.val();
-                    const players = data.players || {};
-
-                    if (players.playerX === mySessionId) {
-                        myRole = 'X';
-                        userPresenceRef = roomRef.child('players/playerX');
-                    } else if (players.playerO === mySessionId) {
-                        myRole = 'O';
-                        userPresenceRef = roomRef.child('players/playerO');
-                    } else {
-                        myRole = 'Spectator';
-                        userPresenceRef = roomRef.child('spectators/' + mySessionId);
-                        userPresenceRef.set(true);
-                    }
-
-                    userPresenceRef.onDisconnect().remove();
-                    attachRoomListener();
+                    backToMain();
+                    return;
                 }
+
+                const data = snapshot.val();
+                const players = data.players || {};
+
+                if (players.playerX === mySessionId) {
+                    myRole = 'X';
+                    userPresenceRef = roomRef.child('players/playerX');
+                } else if (players.playerO === mySessionId) {
+                    myRole = 'O';
+                    userPresenceRef = roomRef.child('players/playerO');
+                } else {
+                    alert('Room is full.');
+                    backToMain();
+                    return;
+                }
+
+                userPresenceRef.onDisconnect().remove();
+                attachRoomListener();
             });
         }
 
@@ -400,39 +402,12 @@
                 if (!data) return;
 
                 const players = data.players || {};
-                const specs = data.spectators || {};
                 
-                if (players.playerX === mySessionId) {
-                    myRole = 'X';
-                } else if (players.playerO === mySessionId) {
-                    myRole = 'O';
-                } else {
-                    myRole = 'Spectator';
-                    roomRef.child('spectators/' + mySessionId).set(true);
-                }
-
                 let activePlayersCount = 0;
                 if (players.playerX) activePlayersCount++;
                 if (players.playerO) activePlayersCount++;
 
-                const specKeys = Object.keys(specs);
-                let mySpecLabel = '';
-                if (myRole === 'Spectator') {
-                    const index = specKeys.indexOf(mySessionId);
-                    if (index !== -1) {
-                        mySpecLabel = 'V' + (index + 1);
-                    }
-                }
-
-                document.getElementById('roomCounts').innerText = `Players: ${activePlayersCount}/2 | Viewers: ${specKeys.length}`;
-                
-                const specInfo = document.getElementById('spectatorInfo');
-                if (myRole === 'Spectator') {
-                    specInfo.classList.remove('hidden');
-                    specInfo.innerText = `You are spectator ${mySpecLabel}`;
-                } else {
-                    specInfo.classList.add('hidden');
-                }
+                document.getElementById('roomCounts').innerText = `Players: ${activePlayersCount}/2`;
 
                 boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
                 currentTurn = data.currentTurn || 'X';
@@ -446,7 +421,7 @@
                 winningPattern = data.winningPattern || [];
                 startingPlayer = data.startingPlayer || 'X';
 
-                renderUnifiedChat(data.messages || {}, specKeys);
+                renderUnifiedChat(data.messages || {});
                 updateUI();
             });
         }
@@ -455,7 +430,6 @@
             if (gameOver || boardState[index] !== "") return;
             
             if (isOnlineMode) {
-                if (myRole === 'Spectator') return;
                 if (currentTurn !== myRole) return;
             }
 
@@ -497,11 +471,11 @@
 
         function undoMove() {
             if (moveHistory.length === 0) return;
-            if (isOnlineMode && myRole === 'Spectator') return;
 
-            if (isOnlineMode) {
-                let lastMove = moveHistory[moveHistory.length - 1];
-                if (lastMove.symbol !== myRole) return;
+            let lastMove = moveHistory[moveHistory.length - 1];
+            if (isOnlineMode && lastMove.symbol !== myRole && !gameOver) {
+                // مسموح للاعب التراجع عن دوره أو إذا انتهت الجولة
+                return;
             }
 
             if (gameOver) {
@@ -555,14 +529,10 @@
             if (gameOver) return;
 
             if (isOnlineMode) {
-                if (myRole === 'Spectator') {
-                    document.getElementById('status').innerText = `Turn: player ${currentTurn}'s turn`;
+                if (currentTurn === myRole) {
+                    document.getElementById('status').innerText = `Your turn (${myRole})`;
                 } else {
-                    if (currentTurn === myRole) {
-                        document.getElementById('status').innerText = `Your turn (${myRole})`;
-                    } else {
-                        document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
-                    }
+                    document.getElementById('status').innerText = `Opponent's turn (${currentTurn})...`;
                 }
             } else {
                 document.getElementById('status').innerText = `Turn: player ${currentTurn}`;
@@ -598,17 +568,7 @@
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val() || {};
                 const players = data.players || {};
-                const specKeys = Object.keys(data.spectators || {});
-                let senderLabel = '';
-
-                if (players.playerX === mySessionId) {
-                    senderLabel = 'Player X';
-                } else if (players.playerO === mySessionId) {
-                    senderLabel = 'Player O';
-                } else {
-                    const index = specKeys.indexOf(mySessionId);
-                    senderLabel = index !== -1 ? `V${index + 1}` : 'Viewer';
-                }
+                let senderLabel = (players.playerX === mySessionId) ? 'Player X' : 'Player O';
 
                 const msgRef = roomRef.child('messages').push();
                 msgRef.set({
@@ -620,7 +580,7 @@
             });
         }
 
-        function renderUnifiedChat(messagesObj, specKeys) {
+        function renderUnifiedChat(messagesObj) {
             const chatContainer = document.getElementById('chatMessages');
             chatContainer.innerHTML = '';
             
@@ -649,8 +609,6 @@
         }
 
         function resetGame() {
-            if (isOnlineMode && myRole === 'Spectator') return;
-            
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
