@@ -201,7 +201,7 @@
             updateUI();
         }
 
-        // زر الإنشاء: يرفض ويخبرك أن الكود مستخدم إذا كانت الغرفة موجودة بنشاط
+        // منع زر الإنشاء من الدخول إذا كانت الغرفة موجودة
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -217,22 +217,19 @@
 
             roomRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
-                if (data && data.players) {
-                    const activePlayers = Object.keys(data.players);
-                    if (activePlayers.length > 0) {
-                        alert('This code is already in use.');
-                        return;
-                    }
+                if (data && data.players && Object.keys(data.players).length > 0) {
+                    alert('This code is already in use.');
+                    return;
                 }
 
                 mySymbol = 'X';
-                initializeAndEnterRoom();
+                setupAndEnterRoom(true);
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
-        // زر الانضمام: مخصص للدخول للغرف القائمة فقط
+        // مخصص للانضمام للغرف القائمة فقط
         function joinGame() {
             const inputField = document.getElementById('roomCodeInput');
             const roomCode = inputField.value.trim();
@@ -270,20 +267,20 @@
                     return;
                 }
 
-                initializeAndEnterRoom();
+                setupAndEnterRoom(false);
             }).catch((error) => {
                 alert('Connection error: ' + error.message);
             });
         }
 
-        function initializeAndEnterRoom() {
+        function setupAndEnterRoom(isCreator) {
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
             document.getElementById('copyBtn').classList.remove('hidden');
 
             roomRef.once('value').then((snapshot) => {
-                if (!snapshot.exists() || !snapshot.val().boardState) {
+                if (isCreator || !snapshot.exists() || !snapshot.val().boardState) {
                     roomRef.set({
                         boardState: ["", "", "", "", "", "", "", "", ""],
                         currentTurn: 'X',
@@ -323,7 +320,6 @@
                 const playersObj = data.players || {};
                 const playersCount = Object.keys(playersObj).length;
 
-                // نظام الفحص التلقائي: إذا أصبحت الغرفة فارغة يتم حساب الوقت وحذفها بعد 3 دقائق
                 if (playersCount === 0) {
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
