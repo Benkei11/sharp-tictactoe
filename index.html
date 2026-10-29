@@ -159,7 +159,7 @@
         let gameOver = false;
         let winningPattern = [];
         let roomCodeText = '';
-        let startingPlayer = 'X';
+        let startingPlayer = 'X'; // Tracks alternating starting player for rounds
 
         function showOnlineMenu() {
             document.getElementById('mainMenu').classList.add('hidden');
@@ -438,16 +438,19 @@
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
-            currentTurn = 'X';
-            startingPlayer = 'X';
+            
+            // Alternate starting player sequentially for the new round
+            startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
+            currentTurn = startingPlayer;
+            
             gameOver = false;
             winningPattern = [];
-            // Scores are preserved and NOT reset here
+            // Scores remain preserved
             updateUI();
             if (isOnlineMode) {
-                document.getElementById('status').innerText = 'Game reset, your turn (' + mySymbol + ')';
+                document.getElementById('status').innerText = 'Game reset, turn: ' + currentTurn;
             } else {
-                document.getElementById('status').innerText = 'Turn: player X';
+                document.getElementById('status').innerText = 'Turn: player ' + currentTurn;
             }
         }
 
