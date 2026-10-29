@@ -195,7 +195,6 @@
 
         <div class="action-btns">
             <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
-            <button id="undoBtn" class="small-btn" onclick="undoMove()">Undo</button>
             <button id="resetBtn" class="small-btn" onclick="resetGame()">Reset game</button>
             <button class="small-btn" onclick="backToMenu()">Back to menu</button>
         </div>
@@ -226,7 +225,6 @@
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
         let playerMoves = { 'X': [], 'O': [] };
-        let moveHistory = [];
         let scores = { 'X': 0, 'O': 0 };
         let gameOver = false;
         let winningPattern = [];
@@ -252,7 +250,6 @@
             currentTurn = 'X';
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
-            moveHistory = [];
             gameOver = false;
             winningPattern = [];
 
@@ -338,7 +335,6 @@
                         currentTurn: 'X',
                         scores: { 'X': 0, 'O': 0 },
                         playerMoves: { 'X': [], 'O': [] },
-                        moveHistory: [],
                         gameOver: false,
                         winningPattern: [],
                         startingPlayer: 'X',
@@ -403,7 +399,6 @@
 
                 const players = data.players || {};
                 
-                // تحديث دور المستخدم دائماً بدقة من قاعدة البيانات
                 if (players.playerX === mySessionId) {
                     myRole = 'X';
                 } else if (players.playerO === mySessionId) {
@@ -423,7 +418,6 @@
                 if (!playerMoves['X']) playerMoves['X'] = [];
                 if (!playerMoves['O']) playerMoves['O'] = [];
 
-                moveHistory = data.moveHistory || [];
                 gameOver = data.gameOver || false;
                 winningPattern = data.winningPattern || [];
                 startingPlayer = data.startingPlayer || 'X';
@@ -455,8 +449,6 @@
             boardState[index] = symbol;
             playerMoves[symbol].push(index);
 
-            moveHistory.push({ index: index, symbol: symbol, removedIndex: removedIndex });
-
             currentTurn = (symbol === 'X') ? 'O' : 'X';
 
             checkWin();
@@ -468,47 +460,6 @@
                     currentTurn: currentTurn,
                     scores: scores,
                     playerMoves: playerMoves,
-                    moveHistory: moveHistory,
-                    gameOver: gameOver,
-                    winningPattern: winningPattern,
-                    startingPlayer: startingPlayer
-                });
-            }
-        }
-
-        function undoMove() {
-            if (moveHistory.length === 0) return;
-
-            if (gameOver) {
-                let lastWinner = boardState[winningPattern[0]];
-                if (scores[lastWinner] > 0) scores[lastWinner]--;
-                gameOver = false;
-                winningPattern = [];
-            }
-
-            let lastMovePopped = moveHistory.pop();
-            boardState[lastMovePopped.index] = "";
-            if (playerMoves[lastMovePopped.symbol]) {
-                playerMoves[lastMovePopped.symbol].pop();
-            }
-
-            if (lastMovePopped.removedIndex !== null) {
-                boardState[lastMovePopped.removedIndex] = lastMovePopped.symbol;
-                if (!playerMoves[lastMovePopped.symbol]) playerMoves[lastMovePopped.symbol] = [];
-                playerMoves[lastMovePopped.symbol].unshift(lastMovePopped.removedIndex);
-            }
-
-            currentTurn = lastMovePopped.symbol;
-            updateUI();
-
-            // رفع التحديث مباشرة إلى قاعدة البيانات ليرى الطرف الآخر التراجع فوراً
-            if (isOnlineMode) {
-                roomRef.update({
-                    boardState: boardState,
-                    currentTurn: currentTurn,
-                    scores: scores,
-                    playerMoves: playerMoves,
-                    moveHistory: moveHistory,
                     gameOver: gameOver,
                     winningPattern: winningPattern,
                     startingPlayer: startingPlayer
@@ -613,7 +564,6 @@
         function resetGame() {
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
-            moveHistory = [];
             startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
             currentTurn = startingPlayer;
             gameOver = false;
@@ -626,7 +576,6 @@
                     currentTurn: currentTurn,
                     scores: scores,
                     playerMoves: playerMoves,
-                    moveHistory: moveHistory,
                     gameOver: gameOver,
                     winningPattern: winningPattern,
                     startingPlayer: startingPlayer
