@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sharp Tic-Tac-Toe</title>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Firebase App & Database SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
         body {
             background-color: #000;
@@ -100,23 +100,26 @@
 
     <h1>Sharp XO</h1>
 
+    <!-- Main Menu -->
     <div id="mainMenu" class="menu">
         <button onclick="showOnlineMenu()">Online multiplayer</button>
         <button onclick="startLocalGame()">Offline multiplayer</button>
     </div>
 
+    <!-- Online Menu -->
     <div id="onlineMenu" class="online-menu hidden">
         <div style="display: flex; gap: 10px;">
-            <input type="text" id="customRoomInput" placeholder="Enter custom room code">
+            <input type="text" id="customRoomInput" placeholder="Enter room code">
             <button onclick="createCustomGame()">Create room</button>
         </div>
         <div style="margin-top: 10px; display: flex; gap: 10px;">
-            <input type="text" id="roomCodeInput" placeholder="Enter room code to join">
+            <input type="text" id="roomCodeInput" placeholder="Enter room code">
             <button onclick="joinGame()">Join room</button>
         </div>
         <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
 
+    <!-- Game Container -->
     <div id="gameContainer" class="game-container hidden">
         <div id="scoreboard">Score - X: 0 | O: 0</div>
         <div id="status">Connecting...</div>
@@ -143,9 +146,11 @@
     </div>
 
     <script>
+        // التهيئة الآمنة لـ Firebase
         const firebaseConfig = {
             databaseURL: "https://sharp-xo-default-rtdb.firebaseio.com/"
         };
+        
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
