@@ -3,311 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sharp XO Game Edition</title>
+    <title>Sharp Tic-Tac-Toe Online</title>
+    <!-- PeerJS library for direct peer-to-peer connection -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
         body {
             background-color: #000;
             color: #fff;
+            font-family: sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
+            justify-content: center;
+            height: 100vh;
             margin: 0;
-            padding: 10px;
         }
         h1 {
             letter-spacing: 2px;
-            margin: 15px 0;
-            border-bottom: 2px solid #fff;
-            padding-bottom: 5px;
-            font-size: 24px;
+            margin-bottom: 10px;
         }
-        .scoreboard {
+        .menu, .game-container {
             display: flex;
-            width: 100%;
-            max-width: 350px;
-            margin-bottom: 15px;
-            border: 2px solid #fff;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
         }
-        .player-box {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
+        .hidden {
+            display: none !important;
+        }
+        button, input {
             background: #000;
             color: #fff;
-        }
-        .player-box:first-child {
-            border-left: 2px solid #fff;
-        }
-        .player-title {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .player-score {
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .turn-indicator {
-            margin-bottom: 15px;
+            border: 2px solid #fff;
+            padding: 10px 20px;
             font-size: 16px;
-            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #fff;
+            color: #000;
+        }
+        input {
+            text-align: center;
         }
         .board {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0;
-            width: 100%;
-            max-width: 350px;
-            border: 2px solid #fff;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            background: #fff;
+            padding: 5px;
+            margin-top: 20px;
         }
         .cell {
-            aspect-ratio: 1;
-            background-color: #000;
-            border: 1px solid #fff;
+            background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 48px;
+            font-size: 40px;
             font-weight: bold;
-            color: #fff;
             cursor: pointer;
             user-select: none;
         }
-        /* Winning cells highlight: Pure White background with Black text */
-        .cell.winner {
-            background-color: #fff;
-            color: #000;
+        .cell:hover {
+            background: #111;
         }
-        .controls {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            max-width: 350px;
-            margin-bottom: 10px;
-        }
-        button.btn {
-            flex: 1;
-            padding: 12px;
-            background-color: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        button.btn:active {
-            background-color: #fff;
-            color: #000;
-        }
-        .reset-score-btn {
-            width: 100%;
-            max-width: 350px;
-            padding: 12px;
-            background-color: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+        #status {
+            margin-top: 15px;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
 
-    <h1>TIC TAC TOE</h1>
+    <h1>SHARP XO</h1>
 
-    <div class="scoreboard">
-        <div class="player-box">
-            <div class="player-title">PLAYER TWO (O)</div>
-            <div class="player-score" id="scoreO">0</div>
-        </div>
-        <div class="player-box">
-            <div class="player-title">PLAYER ONE (X)</div>
-            <div class="player-score" id="scoreX">0</div>
+    <!-- Main menu for creating or joining a room -->
+    <div id="menu" class="menu">
+        <button onclick="createGame()">Create New Room</button>
+        <div style="margin-top: 10px;">
+            <input type="text" id="roomCodeInput" placeholder="Enter Room Code">
+            <button onclick="joinGame()">Join Room</button>
         </div>
     </div>
 
-    <div class="turn-indicator" id="turnIndicator">Player One's Turn (X)</div>
-
-    <div class="board" id="board">
-        <div class="cell" data-index="0"></div>
-        <div class="cell" data-index="1"></div>
-        <div class="cell" data-index="2"></div>
-        <div class="cell" data-index="3"></div>
-        <div class="cell" data-index="4"></div>
-        <div class="cell" data-index="5"></div>
-        <div class="cell" data-index="6"></div>
-        <div class="cell" data-index="7"></div>
-        <div class="cell" data-index="8"></div>
+    <!-- Game interface -->
+    <div id="gameContainer" class="game-container hidden">
+        <div id="status">Connecting...</div>
+        <div class="board" id="board">
+            <div class="cell" onclick="makeMove(0)"></div>
+            <div class="cell" onclick="makeMove(1)"></div>
+            <div class="cell" onclick="makeMove(2)"></div>
+            <div class="cell" onclick="makeMove(3)"></div>
+            <div class="cell" onclick="makeMove(4)"></div>
+            <div class="cell" onclick="makeMove(5)"></div>
+            <div class="cell" onclick="makeMove(6)"></div>
+            <div class="cell" onclick="makeMove(7)"></div>
+            <div class="cell" onclick="makeMove(8)"></div>
+        </div>
+        <div id="roomInfo" style="margin-top: 15px; font-size: 14px; color: #888;"></div>
     </div>
-
-    <div class="controls">
-        <button class="btn" onclick="resetBoard()">Clear Board</button>
-        <button class="btn" onclick="undoMove()">Undo</button>
-    </div>
-    <button class="reset-score-btn" onclick="resetScore()">Reset Score</button>
 
     <script>
-        let board = ['', '', '', '', '', '', '', '', ''];
-        let startingPlayer = 'X';
-        let currentPlayer = 'X';
-        let isGameActive = true;
-        let scoreX = 0;
-        let scoreO = 0;
-        let movesX = []; // تخزين مصفوفة حركات X (حد أقصى 3)
-        let movesO = []; // تخزين مصفوفة حركات O (حد أقصى 3)
-        let history = [];
+        let peer, conn;
+        let isHost = false;
+        let mySymbol = '';
+        let currentTurn = 'X';
+        let boardState = ["", "", "", "", "", "", "", "", ""];
+        // FIFO limit rule: Maximum 3 markers per player
+        let playerMoves = { 'X': [], 'O': [] };
 
-        const winningConditions = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8],
-            [0, 3, 6], [1, 4, 7], [2, 5, 8],
-            [0, 4, 8], [2, 4, 6]
-        ];
+        function createGame() {
+            peer = new Peer();
+            isHost = true;
+            mySymbol = 'X';
 
-        const cells = document.querySelectorAll('.cell');
-        const turnIndicator = document.getElementById('turnIndicator');
-        const scoreXEl = document.getElementById('scoreX');
-        const scoreOEl = document.getElementById('scoreO');
-
-        cells.forEach(cell => {
-            cell.addEventListener('click', handleCellClick);
-        });
-
-        function handleCellClick(e) {
-            const index = parseInt(e.target.dataset.index);
-
-            if (board[index] !== '' || !isGameActive) return;
-
-            // حفظ حالة التراجع (Undo)
-            history.push({
-                board: [...board],
-                currentPlayer: currentPlayer,
-                isGameActive: isGameActive,
-                scoreX: scoreX,
-                scoreO: scoreO,
-                movesX: [...movesX],
-                movesO: [...movesO],
-                turnText: turnIndicator.textContent
+            peer.on('open', (id) => {
+                document.getElementById('menu').classList.add('hidden');
+                document.getElementById('gameContainer').classList.remove('hidden');
+                document.getElementById('status').innerText = 'Room created! Waiting for player 2...';
+                document.getElementById('roomInfo').innerText = 'Room Code: ' + id;
             });
 
-            // إذا كان لدى اللاعب 3 حركات بالفعل، نحذف أقدم حركة له قبل وضع الحركة الجديدة
-            if (currentPlayer === 'X') {
-                if (movesX.length === 3) {
-                    let oldestIndex = movesX.shift();
-                    board[oldestIndex] = '';
-                    cells[oldestIndex].textContent = '';
-                }
-                movesX.push(index);
-            } else {
-                if (movesO.length === 3) {
-                    let oldestIndex = movesO.shift();
-                    board[oldestIndex] = '';
-                    cells[oldestIndex].textContent = '';
-                }
-                movesO.push(index);
-            }
-
-            // وضع الحركة الجديدة
-            board[index] = currentPlayer;
-            e.target.textContent = currentPlayer;
-
-            checkResult();
+            peer.on('connection', (connection) => {
+                conn = connection;
+                setupConnection();
+                document.getElementById('status').innerText = 'Player joined! Your turn (X)';
+            });
         }
 
-        function checkResult() {
-            let roundWon = false;
-            let winningCombination = [];
-
-            for (let condition of winningConditions) {
-                let a = board[condition[0]];
-                let b = board[condition[1]];
-                let c = board[condition[2]];
-
-                if (a === '' || b === '' || c === '') continue;
-                if (a === b && b === c) {
-                    roundWon = true;
-                    winningCombination = condition;
-                    break;
-                }
-            }
-
-            if (roundWon) {
-                isGameActive = false;
-                if (currentPlayer === 'X') {
-                    scoreX++;
-                    scoreXEl.textContent = scoreX;
-                    turnIndicator.textContent = "Player One (X) Wins!";
-                } else {
-                    scoreO++;
-                    scoreOEl.textContent = scoreO;
-                    turnIndicator.textContent = "Player Two (O) Wins!";
-                }
-
-                winningCombination.forEach(index => {
-                    cells[index].classList.add('winner');
-                });
+        function joinGame() {
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if (!roomCode) {
+                alert('Please enter a room code');
                 return;
             }
 
-            // تبديل الدور
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            turnIndicator.textContent = currentPlayer === 'X' ? "Player One's Turn (X)" : "Player Two's Turn (O)";
-        }
+            peer = new Peer();
+            isHost = false;
+            mySymbol = 'O';
 
-        function undoMove() {
-            if (history.length === 0) return;
-
-            let previousState = history.pop();
-            board = previousState.board;
-            currentPlayer = previousState.currentPlayer;
-            isGameActive = previousState.isGameActive;
-            scoreX = previousState.scoreX;
-            scoreO = previousState.scoreO;
-            movesX = previousState.movesX;
-            movesO = previousState.movesO;
-
-            scoreXEl.textContent = scoreX;
-            scoreOEl.textContent = scoreO;
-
-            cells.forEach((cell, index) => {
-                cell.textContent = board[index];
-                cell.classList.remove('winner');
-            });
-
-            turnIndicator.textContent = previousState.turnText;
-        }
-
-        function resetBoard() {
-            board = ['', '', '', '', '', '', '', '', ''];
-            isGameActive = true;
-            movesX = [];
-            movesO = [];
-            
-            startingPlayer = startingPlayer === 'X' ? 'O' : 'X';
-            currentPlayer = startingPlayer;
-            
-            history = [];
-            turnIndicator.textContent = currentPlayer === 'X' ? "Player One's Turn (X)" : "Player Two's Turn (O)";
-            cells.forEach(cell => {
-                cell.textContent = '';
-                cell.classList.remove('winner');
+            peer.on('open', () => {
+                conn = peer.connect(roomCode);
+                setupConnection();
+                document.getElementById('menu').classList.add('hidden');
+                document.getElementById('gameContainer').classList.remove('hidden');
+                document.getElementById('status').innerText = 'Connected! Player (X) goes first.';
             });
         }
 
-        function resetScore() {
-            scoreX = 0;
-            scoreO = 0;
-            scoreXEl.textContent = '0';
-            scoreOEl.textContent = '0';
-            startingPlayer = 'X';
-            resetBoard();
+        function setupConnection() {
+            conn.on('data', (data) => {
+                if (data.type === 'move') {
+                    applyMove(data.index, data.symbol, false);
+                }
+            });
+        }
+
+        function makeMove(index) {
+            if (boardState[index] !== "" || currentTurn !== mySymbol) return;
+
+            applyMove(index, mySymbol, true);
+
+            if (conn && conn.open) {
+                conn.send({ type: 'move', index: index, symbol: mySymbol });
+            }
+        }
+
+        function applyMove(index, symbol, isLocal) {
+            if (playerMoves[symbol].length >= 3) {
+                let oldestIndex = playerMoves[symbol].shift();
+                boardState[oldestIndex] = "";
+            }
+
+            boardState[index] = symbol;
+            playerMoves[symbol].push(index);
+
+            currentTurn = (symbol === 'X') ? 'O' : 'X';
+
+            updateUI();
+            checkWin();
+        }
+
+        function updateUI() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, i) => {
+                cell.innerText = boardState[i];
+            });
+
+            if (currentTurn === mySymbol) {
+                document.getElementById('status').innerText = 'Your turn (' + mySymbol + ')';
+            } else {
+                document.getElementById('status').innerText = "Opponent's turn...";
+            }
+        }
+
+        function checkWin() {
+            const winPatterns = [
+                [0,1,2], [3,4,5], [6,7,8],
+                [0,3,6], [1,4,7], [2,5,8],
+                [0,4,8], [2,4,6]
+            ];
+
+            for (let pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                    document.getElementById('status').innerText = 'Winner: Player ' + boardState[a] + '! 🎉';
+                    currentTurn = '';
+                    return;
+                }
+            }
         }
     </script>
 </body>
