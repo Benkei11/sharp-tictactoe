@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sharp Tic-Tac-Toe</title>
-    <!-- PeerJS library for direct peer-to-peer connection -->
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         body {
             background-color: #000;
@@ -147,10 +148,18 @@
     </div>
 
     <script>
-        let peer, conn;
-        let isHost = false;
-        let isOnlineMode = false;
+        // إعدادات قاعدة بيانات Firebase المجانية الخاصة بالمشروع
+        const firebaseConfig = {
+            databaseURL: "https://sharp-xo-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentRoomId = '';
         let mySymbol = 'X';
+        let isOnlineMode = false;
+        let roomRef = null;
+
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
         let playerMoves = { 'X': [], 'O': [] };
@@ -158,9 +167,7 @@
         let scores = { 'X': 0, 'O': 0 };
         let gameOver = false;
         let winningPattern = [];
-        let roomCodeText = '';
         let startingPlayer = 'X';
-        let emptyRoomTimer = null;
 
         function showOnlineMenu() {
             document.getElementById('mainMenu').classList.add('hidden');
@@ -175,11 +182,16 @@
 
         function startLocalGame() {
             isOnlineMode = false;
-            isHost = true;
             mySymbol = 'X';
             scores = { 'X': 0, 'O': 0 };
             startingPlayer = 'X';
             currentTurn = 'X';
+            boardState = ["", "", "", "", "", "", "", "", ""];
+            playerMoves = { 'X': [], 'O': [] };
+            moveHistory = [];
+            gameOver = false;
+            winningPattern = [];
+
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
             document.getElementById('roomInfo').innerText = '';
@@ -194,57 +206,33 @@
                 return;
             }
 
-            if (peer) {
-                peer.destroy();
-            }
-
-            roomCodeText = customCode;
-            
-            // Explicitly configuring PeerJS with reliable public server settings
-            peer = new Peer(roomCodeText, {
-                host: '0.peerjs.com',
-                port: 443,
-                secure: true,
-                debug: 1
-            });
-
-            isHost = true;
+            currentRoomId = customCode;
             mySymbol = 'X';
-            scores = { 'X': 0, 'O': 0 };
-            startingPlayer = 'X';
+            roomRef = db.ref('rooms/' + currentRoomId);
 
-            peer.on('open', (id) => {
+            // التحقق من حالة الغرفة أو إنشائها
+            roomRef.once('value', (snapshot) => {
+                const roomData = snapshot.val();
+                if (!roomData) {
+                    // إنشاء غرفة جديدة نظيفة
+                    roomRef.set({
+                        boardState: ["", "", "", "", "", "", "", "", ""],
+                        currentTurn: 'X',
+                        scores: { 'X': 0, 'O': 0 },
+                        playerMoves: { 'X': [], 'O': [] },
+                        moveHistory: [],
+                        gameOver: false,
+                        winningPattern: [],
+                        startingPlayer: 'X',
+                        lastActive: Date.now()
+                    });
+                }
+                
+                attachRoomListener();
                 document.getElementById('onlineMenu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('status').innerText = 'Room created, waiting for player 2...';
-                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + id + ')';
+                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
                 document.getElementById('copyBtn').classList.remove('hidden');
-                
-                startEmptyRoomTimer();
-            });
-
-            peer.on('error', (err) => {
-                if (err.type === 'unavailable-id') {
-                    alert('Room code is already registered. Trying to take over or connect...');
-                    // If room exists on server, connect to it as host/peer handler
-                    peer = new Peer({ host: '0.peerjs.com', port: 443, secure: true });
-                    peer.on('open', () => {
-                        conn = peer.connect(customCode);
-                        setupConnection();
-                        document.getElementById('onlineMenu').classList.add('hidden');
-                        document.getElementById('gameContainer').classList.remove('hidden');
-                        document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + customCode + ')';
-                    });
-                } else {
-                    alert('Connection error: ' + err.type);
-                }
-            });
-
-            peer.on('connection', (connection) => {
-                conn = connection;
-                clearEmptyRoomTimer();
-                setupConnection();
-                document.getElementById('status').innerText = 'Player joined, your turn (X)';
             });
         }
 
@@ -255,74 +243,55 @@
                 return;
             }
 
-            if (peer) {
-                peer.destroy();
-            }
-
-            roomCodeText = roomCode;
-            peer = new Peer({
-                host: '0.peerjs.com',
-                port: 443,
-                secure: true
-            });
-            isHost = false;
+            currentRoomId = roomCode;
             mySymbol = 'O';
-            scores = { 'X': 0, 'O': 0 };
-            startingPlayer = 'X';
+            roomRef = db.ref('rooms/' + currentRoomId);
 
-            peer.on('open', () => {
-                conn = peer.connect(roomCode, { reliable: true });
-                setupConnection();
-            });
+            roomRef.once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    alert('Room does not exist. Please check the code.');
+                    return;
+                }
 
-            peer.on('error', (err) => {
-                alert('Could not connect to room. Make sure the room creator has opened the room.');
-            });
-        }
-
-        function setupConnection() {
-            conn.on('open', () => {
+                attachRoomListener();
                 document.getElementById('onlineMenu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + roomCodeText + ')';
-                if (!isHost) {
-                    document.getElementById('status').innerText = 'Connected! Player (X) goes first.';
-                }
-            });
-
-            conn.on('data', (data) => {
-                if (data.type === 'move') {
-                    applyMove(data.index, data.symbol, false);
-                } else if (data.type === 'undo') {
-                    undoMoveLocally(false);
-                } else if (data.type === 'reset') {
-                    resetGameLocally();
-                }
-            });
-
-            conn.on('close', () => {
-                document.getElementById('status').innerText = 'Opponent disconnected. Room remains open.';
-                if (isHost) {
-                    startEmptyRoomTimer();
-                }
+                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
+                document.getElementById('copyBtn').classList.add('hidden');
             });
         }
 
-        function startEmptyRoomTimer() {
-            clearEmptyRoomTimer();
-            // 3 minutes timeout if completely empty
-            emptyRoomTimer = setTimeout(() => {
-                if (peer) {
-                    peer.destroy();
-                }
-            }, 180000);
+        function attachRoomListener() {
+            roomRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                boardState = data.boardState || ["", "", "", "", "", "", "", "", ""];
+                currentTurn = data.currentTurn || 'X';
+                scores = data.scores || { 'X': 0, 'O': 0 };
+                playerMoves = data.playerMoves || { 'X': [], 'O': [] };
+                moveHistory = data.moveHistory || [];
+                gameOver = data.gameOver || false;
+                winningPattern = data.winningPattern || [];
+                startingPlayer = data.startingPlayer || 'X';
+
+                updateUI();
+            });
         }
 
-        function clearEmptyRoomTimer() {
-            if (emptyRoomTimer) {
-                clearTimeout(emptyRoomTimer);
-                emptyRoomTimer = null;
-            }
+        function syncStateToFirebase() {
+            if (!isOnlineMode || !roomRef) return;
+            roomRef.update({
+                boardState: boardState,
+                currentTurn: currentTurn,
+                scores: scores,
+                playerMoves: playerMoves,
+                moveHistory: moveHistory,
+                gameOver: gameOver,
+                winningPattern: winningPattern,
+                startingPlayer: startingPlayer,
+                lastActive: Date.now()
+            });
         }
 
         function makeMove(index) {
@@ -330,18 +299,9 @@
 
             if (isOnlineMode) {
                 if (currentTurn !== mySymbol) return;
-                applyMove(index, mySymbol, true);
-                if (conn && conn.open) {
-                    conn.send({ type: 'move', index: index, symbol: mySymbol });
-                }
-            } else {
-                applyMove(index, currentTurn, true);
             }
-        }
 
-        function applyMove(index, symbol, isLocal) {
-            if (boardState[index] !== "") return;
-
+            let symbol = currentTurn;
             let removedIndex = null;
             if (playerMoves[symbol].length >= 3) {
                 removedIndex = playerMoves[symbol].shift();
@@ -355,8 +315,12 @@
 
             currentTurn = (symbol === 'X') ? 'O' : 'X';
 
-            updateUI();
             checkWin();
+            updateUI();
+
+            if (isOnlineMode) {
+                syncStateToFirebase();
+            }
         }
 
         function undoMove() {
@@ -366,23 +330,6 @@
                 let lastMove = moveHistory[moveHistory.length - 1];
                 if (lastMove.symbol !== mySymbol) return;
             }
-
-            if (gameOver) {
-                let lastWinner = boardState[winningPattern[0]];
-                if (scores[lastWinner] > 0) scores[lastWinner]--;
-                gameOver = false;
-                winningPattern = [];
-            }
-
-            undoMoveLocally(true);
-
-            if (isOnlineMode && conn && conn.open) {
-                conn.send({ type: 'undo' });
-            }
-        }
-
-        function undoMoveLocally(isLocalAction) {
-            if (moveHistory.length === 0) return;
 
             if (gameOver) {
                 let lastWinner = boardState[winningPattern[0]];
@@ -402,6 +349,10 @@
 
             currentTurn = lastMove.symbol;
             updateUI();
+
+            if (isOnlineMode) {
+                syncStateToFirebase();
+            }
         }
 
         function updateUI() {
@@ -445,15 +396,14 @@
                     document.getElementById('status').innerText = 'Winner is player ' + winner + '!';
                     document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
                     gameOver = true;
-                    updateUI();
                     return;
                 }
             }
         }
 
         function copyRoomCode() {
-            if (roomCodeText) {
-                navigator.clipboard.writeText(roomCodeText).then(() => {
+            if (currentRoomId) {
+                navigator.clipboard.writeText(currentRoomId).then(() => {
                     const copyBtn = document.getElementById('copyBtn');
                     copyBtn.innerText = 'Copied!';
                     setTimeout(() => {
@@ -464,13 +414,6 @@
         }
 
         function resetGame() {
-            resetGameLocally();
-            if (isOnlineMode && conn && conn.open) {
-                conn.send({ type: 'reset' });
-            }
-        }
-
-        function resetGameLocally() {
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
             moveHistory = [];
@@ -478,17 +421,16 @@
             currentTurn = startingPlayer;
             gameOver = false;
             winningPattern = [];
+            
             updateUI();
             if (isOnlineMode) {
-                document.getElementById('status').innerText = 'Game reset, turn: ' + currentTurn;
-            } else {
-                document.getElementById('status').innerText = 'Turn: player ' + currentTurn;
+                syncStateToFirebase();
             }
         }
 
         function backToMenu() {
-            if (peer) {
-                peer.destroy();
+            if (roomRef) {
+                roomRef.off();
             }
             window.location.reload();
         }
