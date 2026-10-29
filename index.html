@@ -21,7 +21,6 @@
         }
         h1 {
             letter-spacing: 2px;
-            text-transform: uppercase;
             margin-bottom: 5px;
         }
         .menu, .game-container, .online-menu {
@@ -41,7 +40,6 @@
             font-size: 15px;
             cursor: pointer;
             border-radius: 4px;
-            text-transform: capitalize;
         }
         button:hover {
             background: #fff;
@@ -115,7 +113,6 @@
             text-align: center;
             border-bottom: 1px solid #444;
             padding-bottom: 3px;
-            text-transform: uppercase;
         }
         .chat-messages {
             height: 80px;
@@ -145,23 +142,23 @@
 </head>
 <body>
 
-    <h1>Sharp XO</h1>
+    <h1>Sharp xo</h1>
 
     <!-- Main Menu -->
     <div id="mainMenu" class="menu">
-        <button onclick="showOnlineMenu()">Online Multiplayer</button>
-        <button onclick="startLocalGame()">Offline Multiplayer</button>
+        <button onclick="showOnlineMenu()">Online multiplayer</button>
+        <button onclick="startLocalGame()">Offline multiplayer</button>
     </div>
 
     <!-- Online Menu -->
     <div id="onlineMenu" class="online-menu hidden">
         <div style="display: flex; gap: 10px;">
             <input type="text" id="customRoomInput" placeholder="Enter room code">
-            <button onclick="createCustomGame()">Create Room</button>
+            <button onclick="createCustomGame()">Create room</button>
         </div>
         <div style="margin-top: 10px; display: flex; gap: 10px;">
             <input type="text" id="roomCodeInput" placeholder="Enter room code">
-            <button onclick="joinGame()">Join Room</button>
+            <button onclick="joinGame()">Join room</button>
         </div>
         <button class="small-btn" onclick="backToMain()" style="margin-top: 10px;">Back</button>
     </div>
@@ -189,7 +186,7 @@
         
         <!-- Unified Chat System -->
         <div id="chatBoxContainer" class="chat-box">
-            <div class="chat-title">Game Chat</div>
+            <div class="chat-title">Game chat</div>
             <div id="chatMessages" class="chat-messages"></div>
             <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="Type a message...">
@@ -198,10 +195,10 @@
         </div>
 
         <div class="action-btns">
-            <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy Code</button>
+            <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
             <button id="undoBtn" class="small-btn" onclick="undoMove()">Undo</button>
-            <button id="resetBtn" class="small-btn" onclick="resetGame()">Reset Game</button>
-            <button class="small-btn" onclick="backToMenu()">Back to Menu</button>
+            <button id="resetBtn" class="small-btn" onclick="resetGame()">Reset game</button>
+            <button class="small-btn" onclick="backToMenu()">Back to menu</button>
         </div>
     </div>
 
@@ -325,7 +322,7 @@
         function setupRoomAndJoin() {
             document.getElementById('onlineMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('roomInfo').innerHTML = 'Room Code: ' + currentRoomId;
+            document.getElementById('roomInfo').innerHTML = 'Room code: ' + currentRoomId;
             document.getElementById('copyBtn').classList.remove('hidden');
             document.getElementById('roomCounts').classList.remove('hidden');
             document.getElementById('chatBoxContainer').classList.remove('hidden');
@@ -559,7 +556,7 @@
 
             if (isOnlineMode) {
                 if (myRole === 'Spectator') {
-                    document.getElementById('status').innerText = `Turn: Player ${currentTurn}'s turn`;
+                    document.getElementById('status').innerText = `Turn: player ${currentTurn}'s turn`;
                 } else {
                     if (currentTurn === myRole) {
                         document.getElementById('status').innerText = `Your turn (${myRole})`;
@@ -568,7 +565,7 @@
                     }
                 }
             } else {
-                document.getElementById('status').innerText = `Turn: Player ${currentTurn}`;
+                document.getElementById('status').innerText = `Turn: player ${currentTurn}`;
             }
         }
 
@@ -585,7 +582,7 @@
                     let winner = boardState[a];
                     scores[winner]++;
                     winningPattern = [a, b, c];
-                    document.getElementById('status').innerText = `Winner is Player ${winner}!`;
+                    document.getElementById('status').innerText = `Winner is player ${winner}!`;
                     document.getElementById('scoreboard').innerText = `Score - X: ${scores['X']} | O: ${scores['O']}`;
                     gameOver = true;
                     return;
@@ -645,7 +642,7 @@
                     const copyBtn = document.getElementById('copyBtn');
                     copyBtn.innerText = 'Copied!';
                     setTimeout(() => {
-                        copyBtn.innerText = 'Copy Code';
+                        copyBtn.innerText = 'Copy code';
                     }, 2000);
                 });
             }
