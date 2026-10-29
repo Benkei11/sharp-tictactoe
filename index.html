@@ -95,14 +95,9 @@
             font-size: 12px;
             padding: 5px 10px;
         }
-        /* Dual Chat Containers */
-        .chats-wrapper {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
-        }
+        /* Single Unified Chat Container */
         .chat-box {
-            width: 175px;
+            width: 260px;
             border: 1px solid #fff;
             padding: 6px;
             display: flex;
@@ -110,6 +105,7 @@
             gap: 5px;
             background: #111;
             border-radius: 4px;
+            margin-top: 8px;
         }
         .chat-title {
             font-size: 12px;
@@ -119,7 +115,7 @@
             padding-bottom: 3px;
         }
         .chat-messages {
-            height: 75px;
+            height: 80px;
             overflow-y: auto;
             border: 1px solid #333;
             padding: 4px;
@@ -188,25 +184,13 @@
         
         <div id="roomInfo" style="margin-top: 4px; font-size: 12px; color: #888; text-align: center;"></div>
         
-        <!-- Dual Chat System -->
-        <div class="chats-wrapper">
-            <!-- Player Chat -->
-            <div class="chat-box">
-                <div class="chat-title">Players Chat</div>
-                <div id="playerChatMessages" class="chat-messages"></div>
-                <div class="chat-input-area">
-                    <input type="text" id="playerChatInput" placeholder="Type...">
-                    <button onclick="sendPlayerChat()">Send</button>
-                </div>
-            </div>
-            <!-- Spectator Chat -->
-            <div class="chat-box">
-                <div class="chat-title">Spectators Chat</div>
-                <div id="specChatMessages" class="chat-messages"></div>
-                <div class="chat-input-area">
-                    <input type="text" id="specChatInput" placeholder="Type...">
-                    <button onclick="sendSpecChat()">Send</button>
-                </div>
+        <!-- Unified Chat System -->
+        <div class="chat-box">
+            <div class="chat-title">Game Chat</div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Type a message...">
+                <button onclick="sendChatMessage()">Send</button>
             </div>
         </div>
 
@@ -419,32 +403,38 @@
                 if (myRole === 'Spectator') {
                     if (!players.playerX && specKeys.length > 0 && specKeys[0] === mySessionId) {
                         roomRef.transaction((currentData) => {
-                            if (currentData && currentData.spectators && currentData.spectators[mySessionId]) {
+                            if (currentData && currentData.spectators && currentData.spectators[mySessionId] && (!currentData.players || !currentData.players.playerX)) {
                                 delete currentData.spectators[mySessionId];
                                 if (!currentData.players) currentData.players = {};
                                 currentData.players.playerX = mySessionId;
+                                return currentData;
                             }
-                            return currentData;
-                        }, () => {
-                            myRole = 'X';
-                            userPresenceRef.remove();
-                            userPresenceRef = roomRef.child('players/playerX');
-                            userPresenceRef.onDisconnect().remove();
+                            return;
+                        }, (err, committed, snap) => {
+                            if (committed && snap.val() && snap.val().players.playerX === mySessionId) {
+                                myRole = 'X';
+                                if (userPresenceRef) userPresenceRef.remove();
+                                userPresenceRef = roomRef.child('players/playerX');
+                                userPresenceRef.onDisconnect().remove();
+                            }
                         });
                         return;
                     } else if (!players.playerO && specKeys.length > 0 && specKeys[0] === mySessionId) {
                         roomRef.transaction((currentData) => {
-                            if (currentData && currentData.spectators && currentData.spectators[mySessionId]) {
+                            if (currentData && currentData.spectators && currentData.spectators[mySessionId] && (!currentData.players || !currentData.players.playerO)) {
                                 delete currentData.spectators[mySessionId];
                                 if (!currentData.players) currentData.players = {};
                                 currentData.players.playerO = mySessionId;
+                                return currentData;
                             }
-                            return currentData;
-                        }, () => {
-                            myRole = 'O';
-                            userPresenceRef.remove();
-                            userPresenceRef = roomRef.child('players/playerO');
-                            userPresenceRef.onDisconnect().remove();
+                            return;
+                        }, (err, committed, snap) => {
+                            if (committed && snap.val() && snap.val().players.playerO === mySessionId) {
+                                myRole = 'O';
+                                if (userPresenceRef) userPresenceRef.remove();
+                                userPresenceRef = roomRef.child('players/playerO');
+                                userPresenceRef.onDisconnect().remove();
+                            }
                         });
                         return;
                     }
@@ -479,7 +469,7 @@
                 winningPattern = data.winningPattern || [];
                 startingPlayer = data.startingPlayer || 'X';
 
-                renderChats(data.messages || {}, specKeys);
+                renderUnifiedChat(data.messages || {}, specKeys);
                 updateUI();
             });
         }
@@ -610,31 +600,27 @@
             }
         }
 
-        function sendPlayerChat() {
-            const input = document.getElementById('playerChatInput');
-            const text = input.value.trim();
-            if (!text || myRole === 'Spectator') return;
-
-            const msgRef = roomRef.child('messages/playerChat').push();
-            msgRef.set({
-                sender: `Player ${myRole}`,
-                text: text,
-                timestamp: Date.now()
-            });
-            input.value = '';
-        }
-
-        function sendSpecChat() {
-            const input = document.getElementById('specChatInput');
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
             const text = input.value.trim();
             if (!text) return;
 
-            roomRef.child('spectators').once('value').then((snapshot) => {
-                const specKeys = Object.keys(snapshot.val() || {});
-                const index = specKeys.indexOf(mySessionId);
-                const senderLabel = index !== -1 ? `V${index + 1}` : 'Viewer';
+            roomRef.once('value').then((snapshot) => {
+                const data = snapshot.val() || {};
+                const players = data.players || {};
+                const specKeys = Object.keys(data.spectators || {});
+                let senderLabel = '';
 
-                const msgRef = roomRef.child('messages/specChat').push();
+                if (players.playerX === mySessionId) {
+                    senderLabel = 'Player X';
+                } else if (players.playerO === mySessionId) {
+                    senderLabel = 'Player O';
+                } else {
+                    const index = specKeys.indexOf(mySessionId);
+                    senderLabel = index !== -1 ? `V${index + 1}` : 'Viewer';
+                }
+
+                const msgRef = roomRef.child('messages').push();
                 msgRef.set({
                     sender: senderLabel,
                     text: text,
@@ -644,32 +630,20 @@
             });
         }
 
-        function renderChats(messagesObj, specKeys) {
-            const pChatContainer = document.getElementById('playerChatMessages');
-            pChatContainer.innerHTML = '';
-            const pMsgs = messagesObj.playerChat || {};
-            const pKeys = Object.keys(pMsgs);
-            pKeys.sort((a, b) => pMsgs[a].timestamp - pMsgs[b].timestamp);
-            pKeys.forEach(key => {
-                const msg = pMsgs[key];
-                const div = document.createElement('div');
-                div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
-                pChatContainer.appendChild(div);
-            });
-            pChatContainer.scrollTop = pChatContainer.scrollHeight;
+        function renderUnifiedChat(messagesObj, specKeys) {
+            const chatContainer = document.getElementById('chatMessages');
+            chatContainer.innerHTML = '';
+            
+            const keys = Object.keys(messagesObj);
+            keys.sort((a, b) => messagesObj[a].timestamp - messagesObj[b].timestamp);
 
-            const sChatContainer = document.getElementById('specChatMessages');
-            sChatContainer.innerHTML = '';
-            const sMsgs = messagesObj.specChat || {};
-            const sKeys = Object.keys(sMsgs);
-            sKeys.sort((a, b) => sMsgs[a].timestamp - sMsgs[b].timestamp);
-            sKeys.forEach(key => {
-                const msg = sMsgs[key];
+            keys.forEach(key => {
+                const msg = messagesObj[key];
                 const div = document.createElement('div');
                 div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
-                sChatContainer.appendChild(div);
+                chatContainer.appendChild(div);
             });
-            sChatContainer.scrollTop = sChatContainer.scrollHeight;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
         function copyRoomCode() {
@@ -684,7 +658,7 @@
             }
         }
 
-        function resetGame() {
+    function resetGame() {
             if (myRole === 'Spectator') return;
             
             boardState = ["", "", "", "", "", "", "", "", ""];
