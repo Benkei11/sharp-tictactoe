@@ -54,7 +54,7 @@
             gap: 5px;
             background: #fff;
             padding: 5px;
-            margin-top: 20px;
+            margin-top: 15px;
         }
         .cell {
             background: #000;
@@ -70,17 +70,24 @@
             background: #111;
         }
         #status {
-            margin-top: 15px;
+            margin-top: 10px;
             font-size: 18px;
+        }
+        #scoreboard {
+            font-size: 16px;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
         }
         .action-btns {
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
             margin-top: 10px;
         }
         .small-btn {
             font-size: 14px;
-            padding: 8px 15px;
+            padding: 8px 12px;
         }
     </style>
 </head>
@@ -91,7 +98,7 @@
     <!-- Main menu -->
     <div id="mainMenu" class="menu">
         <button onclick="showOnlineMenu()">Online multiplayer</button>
-        <button onclick="startLocalGame()">Local play (pass & play)</button>
+        <button onclick="startLocalGame()">Offline multiplayer</button>
     </div>
 
     <!-- Online submenu -->
@@ -109,6 +116,7 @@
 
     <!-- Game interface -->
     <div id="gameContainer" class="game-container hidden">
+        <div id="scoreboard">Score - X: 0 | O: 0</div>
         <div id="status">Connecting...</div>
         <div class="board" id="board">
             <div class="cell" onclick="makeMove(0)"></div>
@@ -122,11 +130,12 @@
             <div class="cell" onclick="makeMove(8)"></div>
         </div>
         
-        <div id="roomInfo" style="margin-top: 15px; font-size: 14px; color: #888;"></div>
+        <div id="roomInfo" style="margin-top: 10px; font-size: 14px; color: #888; text-align: center;"></div>
         
         <!-- Action buttons -->
         <div class="action-btns">
             <button id="copyBtn" class="small-btn hidden" onclick="copyRoomCode()">Copy code</button>
+            <button class="small-btn" onclick="undoMove()">Undo</button>
             <button class="small-btn" onclick="resetGame()">Reset game</button>
             <button class="small-btn" onclick="backToMenu()">Back to menu</button>
         </div>
@@ -140,8 +149,11 @@
         let currentTurn = 'X';
         let boardState = ["", "", "", "", "", "", "", "", ""];
         let playerMoves = { 'X': [], 'O': [] };
+        let moveHistory = []; // Stack for tracking move history and scores
+        let scores = { 'X': 0, 'O': 0 };
         let gameOver = false;
         let roomCodeText = '';
+        let startingPlayer = 'X'; // Tracks alternating starting player for rounds
 
         function showOnlineMenu() {
             document.getElementById('mainMenu').classList.add('hidden');
@@ -158,10 +170,13 @@
             isOnlineMode = false;
             isHost = true;
             mySymbol = 'X';
+            scores = { 'X': 0, 'O': 0 };
+            startingPlayer = 'X';
+            currentTurn = 'X';
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById('gameContainer').classList.remove('hidden');
-            document.getElementById('status').innerText = 'Turn: player X';
-            document.getElementById('roomInfo').innerText = 'Local pass & play mode';
+            document.getElementById('roomInfo.innerText = ''');
+            updateUI();
         }
 
         function createCustomGame() {
@@ -179,12 +194,14 @@
             peer = new Peer(roomCodeText);
             isHost = true;
             mySymbol = 'X';
+            scores = { 'X': 0, 'O': 0 };
+            startingPlayer = 'X';
 
             peer.on('open', (id) => {
                 document.getElementById('onlineMenu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('status').innerText = 'Room created, waiting for player 2...';
-                document.getElementById('roomInfo').innerText = 'Room code: ' + id;
+                document.getElementById('status.innerText = 'Room created, waiting for player 2...'';
+                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + id + ')';
                 document.getElementById('copyBtn').classList.remove('hidden');
             });
 
@@ -214,9 +231,12 @@
                 peer.destroy();
             }
 
+            roomCodeText = roomCode;
             peer = new Peer();
             isHost = false;
             mySymbol = 'O';
+            scores = { 'X': 0, 'O': 0 };
+            startingPlayer = 'X';
 
             peer.on('open', () => {
                 conn = peer.connect(roomCode);
@@ -234,15 +254,17 @@
                 if (!isHost) {
                     document.getElementById('onlineMenu').classList.add('hidden');
                     document.getElementById('gameContainer').classList.remove('hidden');
-                    document.getElementById('roomInfo').innerText = 'Connected to room successfully';
+                    document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + roomCodeText + ')';
                 }
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'move') {
                     applyMove(data.index, data.symbol, false);
+                } else if (data.type === 'undo') {
+                    undoMoveLocally(false);
                 } else if (data.type === 'reset') {
-                    resetGameLocally();
+                    resetGameLocally(false);
                 }
             });
 
@@ -268,13 +290,18 @@
         function applyMove(index, symbol, isLocal) {
             if (boardState[index] !== "") return;
 
+            let removedIndex = null;
+            // FIFO rule: max 3 markers per player
             if (playerMoves[symbol].length >= 3) {
-                let oldestIndex = playerMoves[symbol].shift();
-                boardState[oldestIndex] = "";
+                removedIndex = playerMoves[symbol].shift();
+                boardState[removedIndex] = "";
             }
 
             boardState[index] = symbol;
             playerMoves[symbol].push(index);
+
+            // Save state for undo history
+            moveHistory.push({ index: index, symbol: symbol, removedIndex: removedIndex });
 
             currentTurn = (symbol === 'X') ? 'O' : 'X';
 
@@ -282,11 +309,50 @@
             checkWin();
         }
 
+        function undoMove() {
+            if (gameOver || moveHistory.length === 0) return;
+
+            if (isOnlineMode) {
+                // In online mode, only allow undoing your own last move or based on synchronization
+                let lastMove = moveHistory[moveHistory.length - 1];
+                if (lastMove.symbol !== mySymbol) return;
+            }
+
+            undoMoveLocally(true);
+
+            if (isOnlineMode && conn && conn.open) {
+                conn.send({ type: 'undo' });
+            }
+        }
+
+        function undoMoveLocally(isLocalAction) {
+            if (moveHistory.length === 0) return;
+
+            // If game was over, revert gameover state
+            if (gameOver) {
+                gameOver = false;
+            }
+
+            let lastMove = moveHistory.pop();
+            boardState[lastMove.index] = "";
+            playerMoves[lastMove.symbol].pop();
+
+            if (lastMove.removedIndex !== null) {
+                boardState[lastMove.removedIndex] = lastMove.symbol;
+                playerMoves[lastMove.symbol].unshift(lastMove.removedIndex);
+            }
+
+            currentTurn = lastMove.symbol;
+            updateUI();
+        }
+
         function updateUI() {
             const cells = document.querySelectorAll('.cell');
             cells.forEach((cell, i) => {
                 cell.innerText = boardState[i];
             });
+
+            document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
 
             if (gameOver) return;
 
@@ -311,11 +377,30 @@
             for (let pattern of winPatterns) {
                 const [a, b, c] = pattern;
                 if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-                    document.getElementById('status').innerText = 'Winner is player ' + boardState[a] + '!';
+                    let winner = boardState[a];
+                    scores[winner]++;
+                    document.getElementById('status').innerText = 'Winner is player ' + winner + '!';
+                    document.getElementById('scoreboard').innerText = 'Score - X: ' + scores['X'] + ' | O: ' + scores['O'];
                     gameOver = true;
+
+                    // Automatically start next round after a brief pause, alternating starting player
+                    setTimeout(() => {
+                        startNextRound();
+                    }, 1500);
                     return;
                 }
             }
+        }
+
+        function startNextRound() {
+            boardState = ["", "", "", "", "", "", "", "", ""];
+            playerMoves = { 'X': [], 'O': [] };
+            moveHistory = [];
+            gameOver = false;
+            // Alternate starting player sequentially
+            startingPlayer = (startingPlayer === 'X') ? 'O' : 'X';
+            currentTurn = startingPlayer;
+            updateUI();
         }
 
         function copyRoomCode() {
@@ -331,17 +416,22 @@
         }
 
         function resetGame() {
-            resetGameLocally();
+            resetGameLocally(true);
             if (isOnlineMode && conn && conn.open) {
                 conn.send({ type: 'reset' });
             }
         }
 
-        function resetGameLocally() {
+        function resetGameLocally(fullReset) {
             boardState = ["", "", "", "", "", "", "", "", ""];
             playerMoves = { 'X': [], 'O': [] };
+            moveHistory = [];
             currentTurn = 'X';
+            startingPlayer = 'X';
             gameOver = false;
+            if (fullReset) {
+                scores = { 'X': 0, 'O': 0 };
+            }
             updateUI();
             if (isOnlineMode) {
                 document.getElementById('status').innerText = 'Game reset, your turn (' + mySymbol + ')';
