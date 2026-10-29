@@ -148,7 +148,6 @@
     </div>
 
     <script>
-        // إعدادات قاعدة بيانات Firebase المجانية الخاصة بالمشروع
         const firebaseConfig = {
             databaseURL: "https://sharp-xo-default-rtdb.firebaseio.com/"
         };
@@ -210,11 +209,14 @@
             mySymbol = 'X';
             roomRef = db.ref('rooms/' + currentRoomId);
 
-            // التحقق من حالة الغرفة أو إنشائها
+            // الانتقال الفوري لشاشة اللعب
+            document.getElementById('onlineMenu').classList.add('hidden');
+            document.getElementById('gameContainer').classList.remove('hidden');
+            document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
+            document.getElementById('copyBtn').classList.remove('hidden');
+
             roomRef.once('value', (snapshot) => {
-                const roomData = snapshot.val();
-                if (!roomData) {
-                    // إنشاء غرفة جديدة نظيفة
+                if (!snapshot.exists()) {
                     roomRef.set({
                         boardState: ["", "", "", "", "", "", "", "", ""],
                         currentTurn: 'X',
@@ -223,16 +225,10 @@
                         moveHistory: [],
                         gameOver: false,
                         winningPattern: [],
-                        startingPlayer: 'X',
-                        lastActive: Date.now()
+                        startingPlayer: 'X'
                     });
                 }
-                
                 attachRoomListener();
-                document.getElementById('onlineMenu').classList.add('hidden');
-                document.getElementById('gameContainer').classList.remove('hidden');
-                document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
-                document.getElementById('copyBtn').classList.remove('hidden');
             });
         }
 
@@ -253,11 +249,13 @@
                     return;
                 }
 
-                attachRoomListener();
+                // الانتقال الفوري لشاشة اللعب
                 document.getElementById('onlineMenu').classList.add('hidden');
                 document.getElementById('gameContainer').classList.remove('hidden');
                 document.getElementById('roomInfo').innerHTML = 'Online multiplayer<br>(' + currentRoomId + ')';
-                document.getElementById('copyBtn').classList.add('hidden');
+                document.getElementById('copyBtn').classList.remove('hidden');
+
+                attachRoomListener();
             });
         }
 
@@ -289,8 +287,7 @@
                 moveHistory: moveHistory,
                 gameOver: gameOver,
                 winningPattern: winningPattern,
-                startingPlayer: startingPlayer,
-                lastActive: Date.now()
+                startingPlayer: startingPlayer
             });
         }
 
@@ -303,7 +300,9 @@
 
             let symbol = currentTurn;
             let removedIndex = null;
-            if (playerMoves[symbol].length >= 3) {
+            
+            // FIFO rule: max 4 markers per player now
+            if (playerMoves[symbol].length >= 4) {
                 removedIndex = playerMoves[symbol].shift();
                 boardState[removedIndex] = "";
             }
