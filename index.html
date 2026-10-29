@@ -201,7 +201,6 @@
             updateUI();
         }
 
-        // فحص صارم ومباشر لمنع إنشاء غرفة برمز مستخدم مسبقاً
         function createCustomGame() {
             const inputField = document.getElementById('customRoomInput');
             const customCode = inputField.value.trim();
@@ -218,7 +217,6 @@
             roomRef.once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    // إذا كانت الغرفة موجودة ولديها بيانات أو لاعبين، يمنع الإنشاء تماماً
                     if (data && (data.boardState || (data.players && Object.keys(data.players).length > 0))) {
                         alert('This code is already in use.');
                         return;
@@ -232,7 +230,6 @@
             });
         }
 
-        // مخصص للانضمام للغرف القائمة فقط
         function joinGame() {
             const inputField = document.getElementById('roomCodeInput');
             const roomCode = inputField.value.trim();
@@ -323,6 +320,7 @@
                 const playersObj = data.players || {};
                 const playersCount = Object.keys(playersObj).length;
 
+                // نظام الـ 3 دقائق لحذف الغرفة عند خلوها
                 if (playersCount === 0) {
                     if (!data.emptySince) {
                         roomRef.update({ emptySince: Date.now() });
